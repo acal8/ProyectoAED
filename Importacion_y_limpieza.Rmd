@@ -1,0 +1,134 @@
+---
+title: "Importacion_y_limpieza"
+author: "Álvaro Nieva Valenzuela"
+date: "2025-10-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(lubridate)
+library(tidyverse)
+library(writexl)
+
+library(ggplot2)
+library(readxl)
+library(dplyr)
+```
+
+```{r}
+Grado_ocupacion_por_plazas <- read_excel("data/Grado_ocupacion_por_plazas.xlsx")
+
+Grado_ocupacion_por_plazas <- Grado_ocupacion_por_plazas[-c(1:6,71:79),]
+
+Grado_ocupacion_por_plazas[1,-1]<-as.list(as.character((ym(gsub("M", "-", Grado_ocupacion_por_plazas[1,-1])))))
+
+colnames(Grado_ocupacion_por_plazas)<-Grado_ocupacion_por_plazas[c(1),]
+
+colnames(Grado_ocupacion_por_plazas)[1]<-"Localidades"
+
+Grado_ocupacion_por_plazas<-Grado_ocupacion_por_plazas[-c(1),]
+
+Grado_ocupacion_por_plazas <- Grado_ocupacion_por_plazas %>%
+  pivot_longer(
+    cols = -Localidades,
+    names_to = "fecha",
+    values_to = "Grado_ocupacion_por_plazas"
+  ) %>%
+  mutate(
+    fecha = as.Date(fecha),
+    Grado_ocupacion_por_plazas = as.numeric(Grado_ocupacion_por_plazas)
+  )
+
+```
+
+```{r}
+
+Indice_precios_por_CCAA <- read_excel("data/Indice_precios_por_CCAA.xlsx")
+
+Indice_precios_por_CCAA <- Indice_precios_por_CCAA[-c(1:6,28:35),]
+
+Indice_precios_por_CCAA[1,-1]<-as.list(as.character((ym(gsub("M", "-", Indice_precios_por_CCAA[1,-1])))))
+
+colnames(Indice_precios_por_CCAA)<-Indice_precios_por_CCAA[c(1),]
+
+colnames(Indice_precios_por_CCAA)[1]<-"Localidades"
+
+Indice_precios_por_CCAA<-Indice_precios_por_CCAA[-c(1),]
+
+Indice_precios_por_CCAA <- Indice_precios_por_CCAA %>%
+  pivot_longer(
+    cols = -Localidades,
+    names_to = "fecha",
+    values_to = "Indice_precios"
+  ) %>%
+  mutate(
+    fecha = as.Date(fecha),
+    Indice_precios = as.numeric(Indice_precios)
+  )
+```
+
+```{r}
+Ingresos_por_habitacion_disponible <- read_excel("data/Ingresos_por_habitacion_disponible.xlsx")
+
+Ingresos_por_habitacion_disponible <- Ingresos_por_habitacion_disponible[-c(1:6,80:88),]
+
+Ingresos_por_habitacion_disponible[1,-1]<-as.list(as.character((ym(gsub("M", "-", Ingresos_por_habitacion_disponible[1,-1])))))
+
+colnames(Ingresos_por_habitacion_disponible)<-Ingresos_por_habitacion_disponible[c(1),]
+
+colnames(Ingresos_por_habitacion_disponible)[1]<-"Localidades"
+
+Ingresos_por_habitacion_disponible<-Ingresos_por_habitacion_disponible[-c(1),]
+
+Ingresos_por_habitacion_disponible <- Ingresos_por_habitacion_disponible %>%
+  pivot_longer(
+    cols = -Localidades,
+    names_to = "fecha",
+    values_to = "Ingresos_por_habitacion"
+  ) %>%
+  mutate(
+    fecha = as.Date(fecha),
+    Ingresos_por_habitacion = as.numeric(Ingresos_por_habitacion)
+  )
+
+```
+
+```{r}
+N_plazas_estimadas <- read_excel("data/N_plazas_estimadas.xlsx")
+
+N_plazas_estimadas <- N_plazas_estimadas[-c(1:6,71:79),]
+
+N_plazas_estimadas[1,-1]<-as.list(as.character((ym(gsub("M", "-", N_plazas_estimadas[1,-1])))))
+
+colnames(N_plazas_estimadas)<-N_plazas_estimadas[c(1),]
+
+colnames(N_plazas_estimadas)[1]<-"Localidades"
+
+N_plazas_estimadas<-N_plazas_estimadas[-c(1),]
+
+N_plazas_estimadas <- N_plazas_estimadas %>%
+  pivot_longer(
+    cols = -Localidades,
+    names_to = "fecha",
+    values_to = "Plazas_estimadas"
+  ) %>%
+  mutate(
+    fecha = as.Date(fecha),
+    Plazas_estimadas = as.numeric(Plazas_estimadas)
+  )
+```
+
+```{r}
+
+write_xlsx(Grado_ocupacion_por_plazas, "data/tidy/Grado_ocupacion_por_plazas.xlsx")
+write_xlsx(Indice_precios_por_CCAA, "data/tidy/Indice_precios_por_CCAA.xlsx")
+write_xlsx(Ingresos_por_habitacion_disponible, "data/tidy/Ingresos_por_habitacion_disponible.xlsx")
+write_xlsx(N_plazas_estimadas, "data/tidy/N_plazas_estimadas.xlsx")
+
+```
+
