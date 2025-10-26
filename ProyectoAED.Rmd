@@ -1,9 +1,8 @@
 ---
-title: Full title of the paper (Capitalized)
+title: Evolución del Turismo en España y Efectos del COVID
 author:
   - name: Adrián Carrasco Alcala
     affil: 1
-    
   - name: Carlos David Llano Chicaiza
     affil: 2
   - name: Álvaro Nieva Valenzuela
@@ -432,3 +431,8 @@ discussion is unusually long or complex.
 
 This section is not mandatory, but may be added if there are patents resulting
 from the work reported in this manuscript.
+
+
+
+
+
