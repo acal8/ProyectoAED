@@ -206,3 +206,52 @@ Guardamos el dataset tidy en la carpeta ``data/tidy``
 write_xlsx(df_red, "data/tidy/Viajeros_Pernoctaciones_CCAA_Provincias.xlsx")
 ```
 
+Pasemos ahora a importar los datos del dataset ``Viajeros_Pernoctaciones_País_Residencia.csv``
+
+```{r}
+df2 <- read_delim("data/Viajeros_Pernoctaciones_País_Residencia.csv", 
+    delim = ";", escape_double = FALSE, col_types = cols(`RESIDENCIA/ORIGEN` = col_factor(levels = c("Total", 
+        "América (sin EEUU)", "Estados Unidos de América", 
+        "Japón", "Asia (sin Japón)")), 
+        `Viajeros y pernoctaciones` = col_factor(levels = c("Viajero", 
+            "Pernoctaciones")), Total = col_number()), 
+    locale = locale(decimal_mark = ",", grouping_mark = "."), 
+    trim_ws = TRUE)
+```
+
+```{r}
+head(df2)
+tail(df2)
+```
+
+De nuevo se utiliza el punto para separar los miles en la última columna (``Total``), lo cual ajustamos con la herramienta de importación, y la penúltima columna (``Periodo``) viene codificada con el formato **AñoMNúmerodelmes**. Realizaremos las mismas modificaciones que para el dataset anterior.
+
+```{r}
+df2$Periodo <- ym(df2$Periodo)
+```
+
+```{r}
+head(df2)
+tail(df2)
+```
+
+Veamos la estructura de ``df2`` y qué valores diferentes tiene cada una de sus columnas utilizando la función ``unique()``.
+
+```{r}
+str(df2)
+```
+
+```{r}
+unique(df2["RESIDENCIA/ORIGEN"])
+unique(df2["Países"])
+unique(df2["Viajeros y pernoctaciones"])
+unique(df2["Periodo"])
+unique(df2["Total"])
+```
+
+Nuevamente hay algunas columnas del ``data.frame`` que deberíamos importar como factores, como la de ``Viajeros y pernoctaciones`` y la de ``RESIDENCIA/ORIGEN``. Así las hemos importado.
+
+```{r}
+write_xlsx(df2, "data/tidy/Viajeros_Pernoctaciones_País_Residencia.xlsx")
+```
+
