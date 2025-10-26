@@ -1,6 +1,6 @@
 ---
 title: "Importacion_y_limpieza"
-author: "Álvaro Nieva Valenzuela"
+author: "Álvaro Nieva Valenzuela, Adrián Carrasco Alcalá y Carlos David Llano Chicaiza"
 date: "2025-10-26"
 output: html_document
 ---
@@ -10,14 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-library(readxl)
-library(lubridate)
-library(tidyverse)
-library(writexl)
-
-library(ggplot2)
-library(readxl)
-library(dplyr)
+library(pacman)
+packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "writexl", "readxl", "dplyr")
+pacman::p_load(char=packages)
 ```
 
 ```{r}
@@ -130,5 +125,84 @@ write_xlsx(Indice_precios_por_CCAA, "data/tidy/Indice_precios_por_CCAA.xlsx")
 write_xlsx(Ingresos_por_habitacion_disponible, "data/tidy/Ingresos_por_habitacion_disponible.xlsx")
 write_xlsx(N_plazas_estimadas, "data/tidy/N_plazas_estimadas.xlsx")
 
+```
+
+Descargamos los datos directamente de la página del INE, así se actualizan con cada ejecución.
+
+```{r, eval = FALSE}
+if (!file.exists("data")){
+  dir.create("data")
+}
+
+URL1 <- "https://www.ine.es/jaxiT3/files/t/es/csv_bdsc/2074.csv?nocab=1"
+download.file(url = URL1, destfile = "data/Viajeros_Pernoctaciones_CCAA_Provincias.csv")
+
+URL2 <- "https://www.ine.es/jaxiT3/files/t/es/csv_bdsc/2038.csv?nocab=1"
+download.file(url = URL2, destfile = "data/Viajeros_Pernoctaciones_País_Residencia.csv")
+```
+
+Comenzamos importando el dataset ``Viajeros_Pernoctaciones_CCAA_Provincias.csv``.
+
+```{r}
+df <- read_delim("data/Viajeros_Pernoctaciones_CCAA_Provincias.csv", 
+    delim = ";", escape_double = FALSE, col_types = cols(`Viajeros y pernoctaciones` = col_factor(levels = c("Viajero", 
+        "Pernoctaciones")), `Residencia: Nivel 1` = col_factor(levels = c("NA", 
+        "Residentes en España", "Residentes en el Extranjero")), Total = col_number()), 
+    locale = locale(decimal_mark = ",", grouping_mark = "."), 
+    trim_ws = TRUE)
+
+class(df)
+```
+
+```{r}
+head(df)
+tail(df)
+```
+
+Observamos que, al importar el fichero ``csv`` utilizando el asistente de ``R`` de la librería ``readr``, nos detecta la última columna como un vector de caracteres. Esto se debe al uso del punto para separar los miles. Ajustando la opción locale y marcando la columna como ``numeric``, podemos importar la columna con el tipo correcto.
+
+Por otra parte, la penúltima columna (``Periodo``) viene codificada con el formato **AñoMNúmerodelmes**, y tamién nos la detecta como vector de caracteres. Con tal de convertirla en una columna de fechas (``Date``), utilizaremos la función ``ym()`` de la librería ``lubridate``.
+
+```{r}
+df$Periodo <- ym(df$Periodo)
+```
+
+```{r}
+head(df)
+tail(df)
+```
+
+Para comprender mejor el dataset, veamos su estructura y qué valores diferentes tiene cada una de sus columnas utilizando la función ``unique()``.
+
+```{r}
+str(df)
+```
+
+
+```{r}
+unique(df["Totales Territoriales"])
+unique(df["Comunidades y Ciudades Autónomas"])
+unique(df["Provincias"])
+unique(df["Viajeros y pernoctaciones"])
+unique(df["Residencia: Nivel 1"])
+unique(df["Residencia: Nivel 2"])
+unique(df["Periodo"])
+unique(df["Total"])
+```
+
+Esto nos permite comprobar que algunas columnas como la primera (``Totales Territoriales``) y la quinta (``Residencia: Nivel 1``) no nos aportan información adicional, al tomar todo el rato el mismo valor.
+
+Además, observamos que sería recomendable importar como factores algunas columnas del ``data.frame``, como la de ``Viajeros y pernoctaciones`` y la de ``Residencia: Nivel 2``, para así ahorrar espacio en memoria (es por ello que las hemos importado como tales).
+
+Creemos un nuevo ``data.frame`` sin esas columnas, para facilitarnos procesos posteriores.
+
+```{r}
+df_red <- df[,c(2:4, 6:8)]
+```
+
+Guardamos el dataset tidy en la carpeta ``data/tidy``
+
+```{r}
+write_xlsx(df_red, "data/tidy/Viajeros_Pernoctaciones_CCAA_Provincias.xlsx")
 ```
 
