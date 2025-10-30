@@ -1,0 +1,343 @@
+---
+title: "Limpieza_datos"
+author: "Álvaro Nieva Valenzuela"
+date: "2025-10-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(pacman)
+packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "writexl", "readxl", "dplyr","leaflet","gganimate", "sf", "transformr", "rnaturalearth", "rnaturalearthdata","future","furrr","xlsx")
+pacman::p_load(char=packages)
+
+```
+Debido a la estructuara del archivo xslx descargado con los datos, se ha necesitado hacer las siguientes operaciones en el:
+
+```{r}
+
+#Función que recive el archivo xslx y crea un df en formato tidy
+to_tidy<- function(file){
+    
+  df <- read_excel(file)
+  df <- df[-c(1:6,4244:4260),] #Eliminar filas innecesarias (titulo, anotaciones, etc.)
+  
+  df <- df %>% 
+  mutate(across(
+  everything(),
+  ~ {
+    x <- as.character(.)
+    #x <- str_trim(x) #Elimina espacios en blanco al inicio y al final                         
+    #x <- gsub("\\s+", " ", x)
+    ifelse(grepl("^(90|95) ", x),           
+           paste0("De ", x), 
+           x)
+  }
+  ))
+  
+  Columna_1 <- df[[1]]
+  
+  comunidad_idx <- grep("^[0-9]{2} ", Columna_1)
+  sexo_idx <- grep("^(Hombres|Mujeres)$", Columna_1, ignore.case = TRUE)
+  
+  res <- list()
+  
+  for (s in seq_along(sexo_idx)) {
+
+    sexo_start <- sexo_idx[s]
+    sexo_end   <- if (s < length(sexo_idx)) sexo_idx[s + 1] - 1 else length(Columna_1)
+  
+    seleccion <- Columna_1[sexo_start:sexo_end]
+    
+    sexo  <- seleccion[1]
+  
+    comunidad_glob <- tail(Columna_1[grep("^[0-9]{2} ", Columna_1[1:sexo_start])], 1)
+    comunidad <- str_remove(comunidad_glob, "^[0-9]{2} ")
+  
+    edades_rel <- grep("años", seleccion)
+  
+    for (i in edades_rel) {
+  
+      edad_label      <- seleccion[i]
+      edad_idx_global <- sexo_start + i - 1
+      
+      year_idx <- edad_idx_global + 1:4
+      anios <- Columna_1[year_idx]
+  
+      # Extraer las métricas numéricas de esas mismas filas (columnas 2:n)
+      medidas <- df[year_idx, 2:ncol(df)]
+  
+      tmp <- suppressMessages(data.frame(
+        Comunidad = comunidad,
+        Sexo      = sexo,
+        Edad      = edad_label,
+        Año       = anios
+      ) %>%
+        bind_cols(medidas))
+  
+      res[[length(res) + 1]] <- tmp
+    }
+  }
+  
+  df_tidy <- bind_rows(res)
+  
+  return(df_tidy)
+  
+}
+
+availableCores()
+
+plan(multisession, workers = availableCores() - 2)
+
+files <- list.files("data", pattern = "\\.xlsx$", full.names = TRUE)
+
+files <- list.files(path = "data", pattern = "\\.xlsx$", full.names = TRUE)
+
+tidy_data_list<-future_map(files, to_tidy, .progress = TRUE)
+
+
+```
+
+```{r}
+Mortalidad_tidy<-data.frame()
+
+for (i in tidy_data_list){
+  
+  Mortalidad_tidy<-rbind(Mortalidad_tidy, i)
+  
+}
+```
+
+```{r}
+Mortalidad_tidy_backup<-Mortalidad_tidy
+```
+
+
+```{r}
+names(Mortalidad_tidy) <- c(
+  "Comunidad", "Sexo", "Rango_Edad", "Año",
+  "Tasa_mortalidad", "Promedio_anos_vividos", "Riesgo_muerte",
+  "Supervivientes", "Defunciones_teoricas", "Poblacion_estacionaria",
+  "Tiempo_por_vivir", "Esperanza_de_vida"
+)
+```
+
+```{r}
+Mortalidad_tidy <- Mortalidad_tidy %>%
+  mutate(
+    Comunidad = as.character(Comunidad),
+    Sexo = as.character(Sexo),
+    Rango_Edad = as.character(Rango_Edad),
+    Año = ymd(paste0(Año, "-01-01")),
+    Tasa_mortalidad = parse_double(Tasa_mortalidad),
+    Promedio_anos_vividos = parse_double(Promedio_anos_vividos),
+    Riesgo_muerte = parse_double(Riesgo_muerte),
+    Supervivientes = parse_double(Supervivientes),
+    Defunciones_teoricas = parse_double(Defunciones_teoricas),
+    Poblacion_estacionaria = parse_double(Poblacion_estacionaria),
+    Tiempo_por_vivir = parse_double(Tiempo_por_vivir),
+    Esperanza_de_vida = parse_double(Esperanza_de_vida)
+  )
+
+
+```
+```{r}
+write.xlsx(Mortalidad_tidy, "Mortalidad_tidy.xlsx")
+```
+
+
+
+# Características generales.
+
+El dataframe que vamos a analizar a continuación recoge datos relacionados con la tasa de mortalidad en función del sexo, la edad, la comunidad autonoma y el año. A continuación se realiza un analisis de este: 
+
+- Número de registros y variables:
+
+  * 33896 registros
+  * 8 variables
+  
+- Nombres de variables:
+  
+  * Comunidad
+  * Sexo
+  * Rango_Edad
+  * Años
+  * Tasa_mortalidad
+  * Promedio_anos_vividos
+  * Riesgo_muerte
+  * Supervivientes
+  * Defunciones_teoricas
+  * Poblacion_estacionaria
+  * Tiempo_por_vivir
+  * Esperanza_de_vida
+  
+  Todos los nombres de las columnas son descriptivos.
+  
+- Tipo de variable:
+
+  * Comunidad: Cualitativa nominal de tipo character
+  * Sexo: Cualitativa nominal de tipo character
+  * Rango_Edad: Al ser un rango de edad, Cualitativa ordinal character
+  * Años: Cuantitaiva continua datetime
+  * Tasa_mortalidad: Cuantitativa numérica
+  * Promedio_anos_vividos: Cuantitativa numérica
+  * Riesgo_muerte: Cuantitativa numérica
+  * Supervivientes: Cuantitativa numérica
+  * Defunciones_teoricas: Cuantitativa numérica
+  * Poblacion_estacionaria: Cuantitativa numérica
+  * Tiempo_por_vivir: Cuantitativa numérica
+  * Esperanza_de_vida: Cuantitativa numérica
+  
+- Valores diferentes de cada variable:
+
+  * Comunidad: 19
+  * Sexo: 2
+  * Rango_Edad: 22
+  
+- Valores faltantes:
+  
+  * La proporción de valores faltantes se calcula de la siguiente manera `sum(is.na(Mortalidad_tidy)) / (nrow(Mortalidad_tidy) * ncol(Mortalidad_tidy))`. El resultado   es: 0.03349282. 
+
+# Tratamiento de datos faltantes
+
+Para saber que realizar con los valores faltantes, primero vamos a realizar un análisis del data frame.
+
+```{r}
+
+#Porcentaje sobre el data frame completo de los valores faltantes (NA)
+
+porcentaje_NA<-sum(is.na(Mortalidad_tidy)) / (nrow(Mortalidad_tidy) * ncol(Mortalidad_tidy))*100
+
+```
+Observamos que este data frame tiene un 3.3492% de valores faltantes, un valor muy bajo.
+
+```{r}
+#Porcentaje de valores faltantes por columnas
+colMeans(is.na(Mortalidad_tidy)) * 100
+
+#Visualización
+ggplot(
+  data = data.frame(
+    Variable = names(Mortalidad_tidy),
+    Porcentaje_NA = colMeans(is.na(Mortalidad_tidy)) * 100
+  ),
+  aes(x = reorder(Variable, Porcentaje_NA), y = Porcentaje_NA)
+) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Porcentaje de valores faltantes por variable",
+    x = "Variable",
+    y = "% de valores faltantes"
+  ) +
+  theme_minimal(base_size = 13)
+
+```
+
+Se observa que los datos faltantes son de las variables numericas, y además, faltan en la misma proporción, lo que nos puede indicar que no hay aleatoriedad.
+
+A continuación vamos a realizar una observación de los datos faltantes respecto a las variables categóricas en busca de patrones.
+
+```{r}
+Mortalidad_tidy %>%
+  group_by(Rango_Edad) %>%
+  summarise(prop_NA = mean(is.na(Tasa_mortalidad))) %>%
+  ggplot(aes(x = Rango_Edad, y = prop_NA)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Proporción de valores faltantes por grupo de edad",
+    x = "Rango de edad",
+    y = "Proporción de NA"
+  )
+
+Mortalidad_tidy %>%
+  group_by(Sexo) %>%
+  summarise(prop_NA = mean(is.na(Tasa_mortalidad))) %>%
+  ggplot(aes(x = Sexo, y = prop_NA)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Proporción de valores faltantes por sexo",
+    x = "Rango de edad",
+    y = "Proporción de NA"
+  )
+
+Mortalidad_tidy %>%
+  group_by(Comunidad) %>%
+  summarise(prop_NA = mean(is.na(Tasa_mortalidad))) %>%
+  ggplot(aes(x = Comunidad, y = prop_NA)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Proporción de valores faltantes por comunidad",
+    x = "Rango de edad",
+    y = "Proporción de NA"
+  )
+```
+Con estas 3 gráficas, podemos llegar a la conclusión de que los valores faltantes se centran en las personas con rango de edad superior a 90 años.
+
+Con este breve análisis del data frame, podemos pbservar que estamos ante un claro caso de datos faltantes no al azar (MNAR). Las observaciones faltantes corresponden con personas que sobrepasan los 90 años, lo que indica que no hay datos reales para esos casos.
+
+En este caso se ha decidido no imputar estos datos, ya que no contamos con ninguna base empírica para estimar los valores de las variables de esas edades.
+
+Como la mayoría de los datos faltantes pertenecen al rango de edad de 90 y más años y al tener otros rangos de edad que comprenden también ese rango, hemos decidido eliminar esas observaciones.
+
+```{r}
+Mortalidad_tidy <- Mortalidad_tidy %>%
+  filter(Rango_Edad != "De 90 y más años")
+```
+
+```{r}
+Mortalidad_tidy %>%
+  group_by(Rango_Edad) %>%
+  summarise(prop_NA = mean(is.na(Tasa_mortalidad))) %>%
+  ggplot(aes(x = Rango_Edad, y = prop_NA)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Proporción de valores faltantes por grupo de edad",
+    x = "Rango de edad",
+    y = "Proporción de NA"
+  )
+
+Mortalidad_tidy %>%
+  group_by(Sexo) %>%
+  summarise(prop_NA = mean(is.na(Tasa_mortalidad))) %>%
+  ggplot(aes(x = Sexo, y = prop_NA)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Proporción de valores faltantes por sexo",
+    x = "Rango de edad",
+    y = "Proporción de NA"
+  )
+
+Mortalidad_tidy %>%
+  group_by(Comunidad) %>%
+  summarise(prop_NA = mean(is.na(Tasa_mortalidad))) %>%
+  ggplot(aes(x = Comunidad, y = prop_NA)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Proporción de valores faltantes por comunidad",
+    x = "Rango de edad",
+    y = "Proporción de NA"
+  )
+```
+
+## ANÁLISIS UNIVARIANTE:
+
+# Medidas de tendencia central
+
+```{r}
+for (i in names(Mortalidad_tidy)[4:12]){
+  
+  medias_columna<-mean(Mortalidad_tidy$i)
+  
+}
+```
+
