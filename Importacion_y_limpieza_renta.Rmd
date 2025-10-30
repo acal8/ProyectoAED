@@ -1,0 +1,131 @@
+---
+title: "Tasa Mortalidad"
+author: "Adrián Carrasco Alcalá"
+date: "2025-10-28"
+output: html_document
+---
+
+```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F}
+# CONFIGURACIÓN GENERAL
+library(knitr)
+options(width = 100)
+
+# Opciones generales de los chucks. Se utilizarán salvo cambios en el chunk
+opts_chunk$set(echo=F, message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 200, tidy = F, cache.path = '.cache/', fig.path = './figura/')
+
+# Opciones generales de dígitos cuando se incluyen tablas
+#options(xtable.type = 'html')
+knit_hooks$set(inline = function(x) {
+  
+  if(is.numeric(x)) {
+    round(x, getOption('digits'))
+  } else {
+    paste(as.character(x), collapse = ', ')
+  }
+})
+#knit_hooks$set(plot = knitr:::hook_plot_html)
+```
+
+```{r}
+library(pacman)
+packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr")
+pacman::p_load(char=packages)
+```
+
+Descargamos los datos directamente de la página del INE, así se actualizan con cada ejecución.
+
+```{r, eval = FALSE}
+URL1 <- "https://www.ine.es/jaxiT3/files/t/es/csv_bdsc/53689.csv?nocab=1"
+download.file(url = URL1, destfile = "data/Indicadores_renta_media_y_mediana.csv")
+```
+
+Comenzamos importando el dataset ``Indicadores_renta_media_y_mediana.csv``.
+
+```{r}
+df_renta <- read_delim("data/Indicadores_renta_media_y_mediana.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ",", grouping_mark = "."), 
+    trim_ws = TRUE)
+
+class(df_renta)
+```
+
+Para entender mejor las columnas
+
+```{r}
+head(df_renta)
+tail(df_renta)
+```
+
+Número de registros y variables
+
+```{r}
+cat("Tenemos", dim(df_renta)[1], "registros sobre", dim(df_renta)[2], "variables diferentes.")
+```
+
+Nombres de variables
+
+```{r}
+colnames(df_renta)
+```
+
+Observamos que los nombres de las variables son significativos.
+
+Para seguir comprendiendo el dataset, veamos su estructura con la función ``str()``. Además, para saber de qué tipo es cada variable y qué valores diferentes tiene cada una de sus columnas utilizaremos la función ``unique()``. Esto nos permitirá comprobar si hemos importado las columnas correctamente.
+
+```{r}
+str(df_renta)
+```
+
+
+```{r}
+unique(df_renta["Total Nacional"])
+unique(df_renta["Comunidades y Ciudades Autónomas"])
+unique(df_renta["Provincias"])
+unique(df_renta["Islas"])
+unique(df_renta["Indicadores de renta media"])
+unique(df_renta["Periodo"])
+unique(df_renta["Total"])
+```
+
+```{r}
+table(df_renta["Total Nacional"])
+table(df_renta["Comunidades y Ciudades Autónomas"])
+table(df_renta["Provincias"])
+table(df_renta["Islas"])
+table(df_renta["Indicadores de renta media"])
+table(df_renta["Periodo"])
+```
+
+Esto nos permite comprobar que la primera columna (``Total Nacional``) no nos aporta información adicional. Además, eliminaremos la cuarta columna (``Islas``), ya que nos centraremos en las provincias de España.
+
+Por otro lado, notamos que sería recomendable pasar a factor la columna del ``data.frame`` ``Indicadores de renta media``, para así ahorrar espacio en memoria.
+También deberíamos transformar la última columna (``Total``) a numérico.
+
+En primer lugar, creemos un nuevo ``data.frame`` sin las columnas 1 y 4.
+
+```{r}
+df_renta_red <- df_renta[,-c(1, 4)]
+```
+
+A continuación, pasemos a factor la columna ``Indicadores de renta media`` y a formato ``Date`` la columna ``Periodo``.
+
+```{r}
+df_renta_red["Indicadores de renta media"] <- as.factor(df_renta_red[["Indicadores de renta media"]])
+```
+
+
+```{r}
+# df_renta_red <- df_renta_red %>% mutate("Indicadores de renta media", as.factor(df_renta_red[["Indicadores de renta media"]]))
+```
+
+
+```{r}
+df_renta_red$Periodo <- ymd(paste0(df_renta_red$Periodo, "-01-01"))
+```
+
+```{r}
+df_renta_red$Total <- gsub(pattern = "[.]", replacement = "", df_renta_red$Total)
+df_renta_red$Total <- as.numeric(df_renta_red$Total)
+```
+
+
