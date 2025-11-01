@@ -1,0 +1,181 @@
+---
+title: "PIB"
+author: "Carlos Llano"
+date: "2025-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introducción
+
+Este proyecto pretende analizar la calidad de vida en España, para ello utilizaremos diferentes conjuntos de indicadores que nos ayudaran a  establecer comparaciones entre provincias y comunidades de España.
+Cada uno de los conjuntos de datos de información seran obtenidos de INE, puesto que son datos públicos y libres
+Plantearemos una serie de preguntas que nos ayudaran a determinar la calidad de vida en España. Ademas de ver relacionan de los indicadores de esperanza de vida, sanidad, educacion y el PIB. 
+
+## Carga de librerias
+
+Para la realización de este proyecto se han utilizado las siguientes, para la visualización de información, manipular datos, limpieza de datos. 
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+#Visualización
+library(ggplot2)
+#Manipulación de informacion
+library(readxl)
+library(lubridate)
+library(tidyverse)
+library(writexl)
+library(readxl)
+library(dplyr)
+#library(gtsummary)
+```
+
+## Funciones 
+
+Para la manipulación y funcionalidad se han definido diferentes funciones que se utilizan en el proyecto.
+```{r}
+#Funciones
+resumen_df <- function(data) {
+  # Información que va a tener el resumen
+  sumario <- data.frame(
+    variable = character(),
+    type = character(),
+    levels = integer(),
+    topLevel = character(),
+    topCount = integer(),
+    topFrac = numeric(),
+    missFreq = integer(),
+    missFrac = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  n_registros <- nrow(data)
+  
+  # Para cada columna se analiza
+  for (col_name in names(data)) {
+    columna <- data[[col_name]]
+    
+    #  Tipo de dato
+    col_type <- typeof(columna)
+    
+    # Valores perdidos (Missing Data)
+    miss_freq <- sum(is.na(columna))
+    miss_frac <- miss_freq / n_registros
+    
+    #  Niveles únicos, nivel más repetido y su frecuencia/fracción
+    n_levels <- length(unique(columna[!is.na(columna)]))
+    
+    if (n_levels > 0) {
+      frecuencias <- table(columna[!is.na(columna)])
+      top_count_idx <- which.max(frecuencias)
+      top_count <- as.integer(frecuencias[top_count_idx])
+      top_level <- names(frecuencias)[top_count_idx]
+      top_frac <- top_count / n_registros
+    } else {
+      # Teniendo en cuenta los valores son NA 
+      top_level <- "N/A"
+      top_count <- 0
+      top_frac <- 0
+    }
+    
+    # Añadimos información de la fila
+    sumario <- sumario %>% 
+      add_row(
+        variable = col_name,
+        type = col_type,
+        levels = n_levels,
+        topLevel = top_level,
+        topCount = top_count,
+        topFrac = top_frac,
+        missFreq = miss_freq,
+        missFrac = miss_frac
+      )
+  }
+  
+  return(sumario)
+}
+```
+
+# Data
+
+Para llevar a cabo el análisis del Indice de Calidad de Vida, hemos visto los diferentes indicadores como:
+
+* Índice de Desarrollo Humano IDH
+* Índice del Planeta Feliz IPF
+* Informe Mundial de la Felicidad WHR
+* Indicador Multidimensional de Calidad de Vida  del INE - IMCV
+
+```{r tab01, echo=FALSE}
+datos_calidad_vida<-data.frame(
+  Organismo = c("IDH", "WHI", "OCDE", "IMCV"),
+  Salud = c("Al nacer.", "Vida saludable.", "Salud autopercibida.", "Componente de Salud "),
+  Riqueza  = c("Renta Nacional Bruta (RNB) per cápita.", "Producto Interno Bruto (PIB) per cápita.", "Ingresos del hogar disponible.", "Componente de Condiciones Materiales de Vida.")
+)
+colnames(datos_calidad_vida)=c("Organismo",	"Salud y Esperanza de Vida",	"Riqueza / Ingreso")
+
+knitr::kable(datos_calidad_vida,format = "latex", 
+             booktabs = TRUE, 
+             caption = "Tabla resumen de los indicadores que tienen como prioridad los indicadores de Salud/Espranza de Vida y Riqueza/ingresos", 
+             align = 'ccc', centering = FALSE,
+             table.envir = "table", position = "H")
+```
+
+Debido a que estos indicadores nos daran un panorama amplio de como esta la calidad de vida en España, se ha determinado usar los siguientes dataset:
+
+* Tablas de mortalidad por año, comunidades y ciudades autónomas, sexo, edad y funciones.
+* P.I.B. a precios de mercado y valor añadido bruto a precios básicos por ramas de actividad: Precios corrientes por comunidades y ciudades autónomas, magnitud y periodo. 
+* Urbanismo
+
+# Objetivos
+Lo que se pretende alcanzar del proyecto.
+
+## Cuestiones que se van contestar con los dataset
+  * Análisis descriptivo básico,determinar la esperanza de vida media y los valores extremos por comunidad autónoma
+  * Análisis temporal,observar la tendencia de la esperanza de vida  identificando tasas de crecimiento y detectando eventos de caídas notables 
+  * Comparaciones territoriales,si las regiones se mantienen constantemente por encima o por debajo de la media nacional
+  * Análisis relacional,evaluar la correlación de la esperanza de vida con variables externas como el PIB per cápita, el gasto sanitario o el nivel de urbanización para entender sus posibles causas.
+  * Análisis de desigualdad y outliers,cuantificar  dispersión de la esperanza de vida entre comunidades.Detectar valores o años atípicos que se desvían drásticamente del promedio.
+
+
+## Carga de Documentos
+A continuación se muestra los dataset, que se cargaran para realizar este analisis del Calidad de Vida en España:
+
+```{r , message=FALSE, warning=FALSE}
+tasaMortailidad <- read_excel("./data/TasaMortalidad.xlsx")
+riqueza  <- read.csv("./data/RiquezaPIB.csv", header=TRUE, sep=";")
+```
+
+### DataSet  para el indicador de Riqueza e Ingreso
+Características de los dataset sin realizar modificaciones previas, ni definir tipo de datos. 
+
+```{r}
+# De la siguiente observación vemos que  se cuentan con 23520 observaciones 
+#y 7 variable
+dim(riqueza)
+```
+Ahora analizamos la estructura que tiene nuestro información
+```{r,  echo=FALSE}
+resumen_df(riqueza)
+```
+
+Del resumen podemos ver que hay información que no se carga correctamente :
+* Tipo de datos incorrectos
+* Información repetida 
+
+Cambio de tipo de variables
+```{r,  echo=FALSE}
+#Variable Total ->Numerico
+riqueza_var<-riqueza%>%mutate(Total=as.numeric(gsub("\\.", "", Total)))%>%
+  mutate(Agregados=factor(Agregados.macroeconómicos))%>% #Cambiamos a factor
+  select(-Agregados.macroeconómicos) #Eliminamos la columna
+
+resumen_df(riqueza_var)
+
+
+#Cambiamos nombre de Variables debido a que hay acentos y nombres muy extensos
+
+```
