@@ -98,10 +98,6 @@ files <- list.files(path = "data", pattern = "\\.xlsx$", full.names = TRUE)
 
 tidy_data_list<-future_map(files, to_tidy, .progress = TRUE)
 
-
-```
-
-```{r}
 Mortalidad_tidy<-data.frame()
 
 for (i in tidy_data_list){
@@ -109,15 +105,29 @@ for (i in tidy_data_list){
   Mortalidad_tidy<-rbind(Mortalidad_tidy, i)
   
 }
+
+Mortalidad_tidy_backup<-Mortalidad_tidy
 ```
 
 ```{r}
-Mortalidad_tidy_backup<-Mortalidad_tidy
+
+```
+
+```{r}
+
 ```
 
 
 ```{r}
 names(Mortalidad_tidy) <- c(
+  "Comunidad", "Sexo", "Rango_Edad", "Año",
+  "Tasa_mortalidad", "Promedio_anos_vividos", "Riesgo_muerte",
+  "Supervivientes", "Defunciones_teoricas", "Poblacion_estacionaria",
+  "Tiempo_por_vivir", "Esperanza_de_vida"
+)
+```
+```{r}
+names(Mortalidad_tidy_backup) <- c(
   "Comunidad", "Sexo", "Rango_Edad", "Año",
   "Tasa_mortalidad", "Promedio_anos_vividos", "Riesgo_muerte",
   "Supervivientes", "Defunciones_teoricas", "Poblacion_estacionaria",
@@ -145,12 +155,12 @@ Mortalidad_tidy <- Mortalidad_tidy %>%
 
 ```
 ```{r}
-write.xlsx(Mortalidad_tidy, "Mortalidad_tidy.xlsx")
+write.xlsx(Mortalidad_tidy, "data/Mortalidad_tidy.xlsx")
 ```
 
 
 
-# Características generales.
+# CARACTERÍSTICAS GENERALES.
 
 El dataframe que vamos a analizar a continuación recoge datos relacionados con la tasa de mortalidad en función del sexo, la edad, la comunidad autonoma y el año. A continuación se realiza un analisis de este: 
 
@@ -184,7 +194,7 @@ El dataframe que vamos a analizar a continuación recoge datos relacionados con 
   * Años: Cuantitaiva continua datetime
   * Tasa_mortalidad: Cuantitativa numérica
   * Promedio_anos_vividos: Cuantitativa numérica
-  * Riesgo_muerte: Cuantitativa numérica
+  * Riesgo_muerte: Cuantitativa numérica (se expresa como una tasa de probabilidad por edad y sexo, calculada a partir de las defunciones y la población media para cada grupo)
   * Supervivientes: Cuantitativa numérica
   * Defunciones_teoricas: Cuantitativa numérica
   * Poblacion_estacionaria: Cuantitativa numérica
@@ -200,8 +210,8 @@ El dataframe que vamos a analizar a continuación recoge datos relacionados con 
 - Valores faltantes:
   
   * La proporción de valores faltantes se calcula de la siguiente manera `sum(is.na(Mortalidad_tidy)) / (nrow(Mortalidad_tidy) * ncol(Mortalidad_tidy))`. El resultado   es: 0.03349282. 
-
-# Tratamiento de datos faltantes
+  
+# TRATAMIENTO DE DATOS FALTANTES
 
 Para saber que realizar con los valores faltantes, primero vamos a realizar un análisis del data frame.
 
@@ -236,8 +246,7 @@ ggplot(
   theme_minimal(base_size = 13)
 
 ```
-
-Se observa que los datos faltantes son de las variables numericas, y además, faltan en la misma proporción, lo que nos puede indicar que no hay aleatoriedad.
+Se observa que los datos faltantes son de las variables numéricas, y además, faltan en la misma proporción, lo que nos puede indicar que no hay aleatoriedad.
 
 A continuación vamos a realizar una observación de los datos faltantes respecto a las variables categóricas en busca de patrones.
 
@@ -280,7 +289,7 @@ Mortalidad_tidy %>%
 ```
 Con estas 3 gráficas, podemos llegar a la conclusión de que los valores faltantes se centran en las personas con rango de edad superior a 90 años.
 
-Con este breve análisis del data frame, podemos pbservar que estamos ante un claro caso de datos faltantes no al azar (MNAR). Las observaciones faltantes corresponden con personas que sobrepasan los 90 años, lo que indica que no hay datos reales para esos casos.
+Con este breve análisis del data frame, se observa que estamos ante un claro caso de datos faltantes no al azar (MNAR). Las observaciones faltantes corresponden con personas que sobrepasan los 90 años, lo que indica que no hay datos reales para esos casos.
 
 En este caso se ha decidido no imputar estos datos, ya que no contamos con ninguna base empírica para estimar los valores de las variables de esas edades.
 
@@ -290,6 +299,13 @@ Como la mayoría de los datos faltantes pertenecen al rango de edad de 90 y más
 Mortalidad_tidy <- Mortalidad_tidy %>%
   filter(Rango_Edad != "De 90 y más años")
 ```
+
+```{r}
+sum(is.na(Mortalidad_tidy)) / (nrow(Mortalidad_tidy) * ncol(Mortalidad_tidy))*100
+colMeans(is.na(Mortalidad_tidy)) * 100
+
+```
+Ahora el data frame cuenta con un 0.66% de datos faltantes, un valor muy bajo
 
 ```{r}
 Mortalidad_tidy %>%
@@ -329,15 +345,88 @@ Mortalidad_tidy %>%
   )
 ```
 
-## ANÁLISIS UNIVARIANTE:
+# ANÁLISIS UNIVARIANTE:
 
-# Medidas de tendencia central
+## Medidas de tendencia central
+
+### Media
+
+A continuación se muestran las gráficas que representan la media de cada variable numérica en función de cada variable categórica
 
 ```{r}
-for (i in names(Mortalidad_tidy)[4:12]){
-  
-  medias_columna<-mean(Mortalidad_tidy$i)
-  
+plot_mean_by <- function(df, variable_categorica, variable_numerica) {
+  df %>%
+    group_by(.data[[variable_categorica]]) %>%
+    summarise(Media = mean(.data[[variable_numerica]], na.rm = TRUE)) %>%
+    ggplot(aes(x = reorder(.data[[variable_categorica]], Media), y = Media, fill = .data[[variable_categorica]])) +
+    geom_col(show.legend = FALSE) +
+    coord_flip() +
+    labs(
+      title = paste("Media de", variable_numerica, "por", variable_categorica),
+      x = variable_categorica,
+      y = paste("Media de", variable_numerica, "(‰)")
+    ) +
+    theme_minimal(base_size = 13)
+}
+
+num_vars <- names(Mortalidad_tidy)[sapply(Mortalidad_tidy, is.numeric)]
+
+categoricas <- c("Comunidad", "Rango_Edad", "Sexo", "Año")
+
+for (cat in categoricas) {
+  for (num in num_vars) {
+    print(plot_mean_by(Mortalidad_tidy, cat, num))
+  }
+}
+```
+
+### Mediana
+
+A continuación se muestran las gráficas que representan la mediana de cada variable numérica en función de cada variable categórica
+
+```{r}
+plot_median_by <- function(df, variable_categorica, variable_numerica) {
+  df %>%
+    group_by(.data[[variable_categorica]]) %>%
+    summarise(Mediana = median(.data[[variable_numerica]], na.rm = TRUE)) %>%
+    ggplot(aes(x = reorder(.data[[variable_categorica]], Mediana), y = Mediana, fill = .data[[variable_categorica]])) +
+    geom_col(show.legend = FALSE) +
+    coord_flip() +
+    labs(
+      title = paste("Mediana de", variable_numerica, "por", variable_categorica),
+      x = variable_categorica,
+      y = paste("Mediana de", variable_numerica, "(‰)")
+    ) +
+    theme_minimal(base_size = 13)
+}
+
+for (cat in categoricas) {
+  for (num in num_vars) {
+    print(plot_median_by(Mortalidad_tidy, cat, num))
+  }
+}
+```
+
+### Quantiles
+
+```{r}
+plot_quartiles_by <- function(df, variable_categorica, variable_numerica) {
+  ggplot(df, aes(x = .data[[variable_categorica]], y = .data[[variable_numerica]], fill = .data[[variable_categorica]])) +
+    geom_boxplot(outlier.alpha = 0.3) +
+    coord_flip() +
+    labs(
+      title = paste("Distribución y cuartiles de", variable_numerica, "por", variable_categorica),
+      x = variable_categorica,
+      y = paste(variable_numerica, "(‰)")
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(legend.position = "none")
+}
+
+for (cat in categoricas) {
+  for (num in num_vars) {
+    print(plot_quartiles_by(Mortalidad_tidy, cat, num))
+  }
 }
 ```
 
