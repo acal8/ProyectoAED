@@ -380,6 +380,168 @@ for (cat in categoricas) {
 }
 ```
 
+Con estas gráficas se pueden responder diferentes preguntas que nos hemos planteado:
+
+#### ¿¿Cuál es la esperanza de vida media en España en el último año disponible?
+
+Para este análisis de la esperanza de vida se ha escogido calcular la media para una edad de 0 años. 
+
+```{r}
+mean(Mortalidad_tidy[Mortalidad_tidy$Año == "2023-01-01" & Mortalidad_tidy$Rango_Edad == "0 años", "Esperanza_de_vida"],na.rm = TRUE )
+```
+La media de esperanza de vida en España del año 2023 (Último año disponible) es de `mean(Mortalidad_tidy[Mortalidad_tidy$Año == "2023-01-01" & Mortalidad_tidy$Rango_Edad == "0 años", "Esperanza_de_vida"],na.rm = TRUE )`.
+
+```{r}
+Mortalidad_tidy %>%
+  filter(
+    Año == as.Date("2023-01-01"),
+    Rango_Edad == "De 1 a 4 años"
+  ) %>%
+  group_by(Comunidad) %>%
+  summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
+  ggplot(aes(x = reorder(Comunidad, Media_vida), 
+             y = Media_vida, 
+             fill = Comunidad)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Esperanza de vida media (1–4 años) por Comunidad Autónoma — 2023",
+    subtitle = "Datos de Mortalidad_tidy",
+    x = "Comunidad Autónoma",
+    y = "Esperanza de vida (años)"
+  )
+```
+Podemos observar que la media de esperanza de vida más alta en españa pertenece a La Comunidad de Madrid mientras que la que menos esperanza de vida tiene es Ceuta con una diferencia de `mean(Mortalidad_tidy[Mortalidad_tidy$Año == "2023-01-01" & Mortalidad_tidy$Rango_Edad == "0 años" & Mortalidad_tidy$Comunidad == "Madrid, Comunidad de", "Esperanza_de_vida"],na.rm = TRUE ) - mean(Mortalidad_tidy[Mortalidad_tidy$Año == "2023-01-01" & Mortalidad_tidy$Rango_Edad == "0 años" & Mortalidad_tidy$Comunidad == "Ceuta", "Esperanza_de_vida"],na.rm = TRUE )` años.
+
+#### ¿Cual es la evolución de la esperanza de vida en el tiempo?
+
+```{r}
+Evolucion_mortalidad_Por_CA<-Mortalidad_tidy %>%
+  filter(
+    Rango_Edad == "0 años"      # rango de edad al nacer
+  ) %>%
+  group_by(Año, Comunidad) %>%
+  summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
+  ggplot(aes(x = Año,
+             y = Media_vida,
+             color = Comunidad)) +
+  geom_line(linewidth = 1) +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Esperanza de vida por C.A.",
+    subtitle = "Rango de edad: 0 años",
+    x = "Año",
+    y = "Esperanza de vida (años)",
+    color = "Comunidad Autónoma"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40")
+    
+  )
+
+ggsave(filename = "data/plots/Evolucion_Esperanza_Vida.jpg", plot = Evolucion_mortalidad_Por_CA, width = 14, height = 8, dpi = 300, device = "jpeg")
+
+Evolucion_mortalidad_Por_CA
+```
+Se puede apreciar una caída de la esperanza de vida en el año 2020, que coincide exactamente con la pandemia de COVID-19:
+
+```{r}
+Evolucion_mortalidad_Por_CA_Covid<-Mortalidad_tidy %>%
+  filter(
+    Rango_Edad == "0 años"    # Esperanza de vida al nacer
+  ) %>%
+  group_by(Año, Comunidad) %>%
+  summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
+  ggplot(aes(x = Año, y = Media_vida, color = Comunidad)) +
+  geom_line(linewidth = 1) +
+  coord_cartesian(xlim = as.Date(c("2019-01-01", "2021-12-31"))) +  # 👈 centramos el rango
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Evolución esperanza de vida (2018–2022)",
+    subtitle = "Enfoque en el periodo de la pandemia de COVID-19",
+    x = "Año",
+    y = "Esperanza de vida (años)",
+    color = "Comunidad Autónoma"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40")
+  )
+
+ggsave(filename = "data/plots/Evolucion_mortalidad_Por_CA_Covid.jpg", plot = Evolucion_mortalidad_Por_CA, width = 14, height = 8, dpi = 300, device = "jpeg")
+
+Evolucion_mortalidad_Por_CA_Covid
+```
+
+
+```{r}
+disminucion_media<- Mortalidad_tidy %>%
+  filter(
+    Rango_Edad=="0 años",
+  ) %>%
+group_by(Año,Comunidad)
+
+suma_media_esperanza_vida_2019<-mean(
+  disminucion_media[disminucion_media$Año == as.Date("2019-01-01"), "Esperanza_de_vida", drop = TRUE],
+  na.rm = TRUE
+)
+
+suma_media_esperanza_vida_2020<-mean(
+  disminucion_media[disminucion_media$Año == as.Date("2020-01-01"), "Esperanza_de_vida", drop = TRUE],
+  na.rm = TRUE
+)
+
+suma_media_esperanza_vida_2019-suma_media_esperanza_vida_2020
+```
+
+Durante el COVID, la disminución media de la esperanza de vida fue de:`diferencia=suma_media_esperanza_vida_2019-suma_media_esperanza_vida_2020`
+
+#### ¿Que rango de edad sufrió una mayor disminución de la esperanza de vida en la época covid?
+
+```{r}
+Evolucion_mortalidad_Por_Rango_Edad_Covid<-Mortalidad_tidy %>%
+  group_by(Año, Rango_Edad) %>%
+  summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
+  ggplot(aes(x = Año, y = Media_vida, color = Rango_Edad)) +
+  geom_line(linewidth = 1) +
+  coord_cartesian(xlim = as.Date(c("2015-01-01", "2023-12-31"))) +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Evolución esperanza de vida (2018–2022)",
+    subtitle = "Enfoque en el periodo de la pandemia de COVID-19",
+    x = "Año",
+    y = "Esperanza de vida (años)",
+    color = "Rango_Edad"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40")
+  )
+
+ggsave(filename = "data/plots/Evolucion_mortalidad_Por_Rango_Edad_Covid.jpg", plot = Evolucion_mortalidad_Por_CA, width = 14, height = 8, dpi = 300, device = "jpeg")
+
+Evolucion_mortalidad_Por_Rango_Edad_Covid
+```
+```{r}
+disminucion_por_edad<-Mortalidad_tidy %>%
+  filter(
+    Año %in% as.Date(c("2019-01-01", "2020-01-01"))
+  ) %>%
+  group_by(Año, Rango_Edad) %>%
+  summarise(Media_esperanza_vida=mean(Esperanza_de_vida,na.rm=TRUE)) %>%
+  ungroup()
+
+cambio_por_edad <- disminucion_por_edad %>%
+  pivot_wider(names_from = Año, values_from = Media_esperanza_vida) %>%
+  mutate(Disminucion = `2020-01-01` - `2019-01-01`) %>%
+  arrange(Disminucion)
+
+cambio_por_edad
+```
+
+
 ### Mediana
 
 A continuación se muestran las gráficas que representan la mediana de cada variable numérica en función de cada variable categórica
@@ -425,8 +587,60 @@ plot_quartiles_by <- function(df, variable_categorica, variable_numerica) {
 
 for (cat in categoricas) {
   for (num in num_vars) {
-    print(plot_quartiles_by(Mortalidad_tidy, cat, num))
+    suppressWarnings(print(plot_quartiles_by(Mortalidad_tidy, cat, num)))
   }
 }
 ```
+### Desviación estandar
+
+```{r}
+plot_sd_by <- function(df, variable_numerica) {
+  
+  x <- df[[variable_numerica]]
+  x <- x[!is.na(x)] 
+  
+  mean_val <- mean(x)
+  sd_val <- sd(x)
+  
+  ggplot(df, aes(x = .data[[variable_numerica]])) +
+    geom_density(fill = "skyblue", alpha = 0.5, color = "steelblue", linewidth = 1) +
+    geom_vline(xintercept = mean_val, color = "red", linewidth = 1.2, linetype = "solid") +
+    geom_vline(xintercept = mean_val + sd_val, color = "darkgreen", linetype = "dashed", linewidth = 1) +
+    geom_vline(xintercept = mean_val - sd_val, color = "darkgreen", linetype = "dashed", linewidth = 1) +
+    theme_minimal(base_size = 14) +
+    labs(
+      title = paste("Distribución y desviación std. de", variable_numerica, "(‰)"),
+      subtitle = paste0("Media = ", round(mean_val, 2), 
+                        " | Desviación estándar = ", round(sd_val, 2)),
+      x = variable_numerica,
+      y = "Densidad"
+    )
+}
+
+for (num in num_vars) {
+  suppressWarnings(print(plot_sd_by(Mortalidad_tidy, num)))
+}
+
+```
+
+### Varianza
+
+```{r}
+Varianza_por_grupo <- Mortalidad_tidy %>%
+  group_by(Comunidad, Sexo, Rango_Edad) %>%
+  summarise(
+    Var_Tasa_mortalidad = var(Tasa_mortalidad, na.rm = TRUE),
+    Var_Riesgo_muerte   = var(Riesgo_muerte, na.rm = TRUE),
+    Var_Defunciones_teoricas     = var(Defunciones_teoricas, na.rm = TRUE),
+    Var_Promedio_anos_vividos = var(Promedio_anos_vividos, na.rm = TRUE),
+    Var_Supervivientes     = var(Supervivientes, na.rm = TRUE),
+    Var_Riesgo_muerte     = var(Riesgo_muerte, na.rm = TRUE),
+    Var_Poblacion_estacionaria     = var(Poblacion_estacionaria, na.rm = TRUE),
+    Var_Tiempo_por_vivir = var(Tiempo_por_vivir, na.rm=TRUE),
+    var_Esperanza_de_vida = var(Esperanza_de_vida, na.rm=TRUE)
+    
+  ) %>%
+  ungroup()
+```
+
 
