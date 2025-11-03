@@ -109,12 +109,13 @@ for (i in tidy_data_list){
 Mortalidad_tidy_backup<-Mortalidad_tidy
 ```
 
+Tiempo por vivir y esperanza de vida representan lo mismo:
 ```{r}
-
+Mortalidad_tidy<-Mortalidad_tidy[-c(11)]
 ```
 
 ```{r}
-
+Mortalidad_tidy_backup<-Mortalidad_tidy
 ```
 
 
@@ -349,6 +350,59 @@ Mortalidad_tidy %>%
 
 ## Medidas de tendencia central
 
+Primero de todo, vamos a ver si este data set contiene muchos outliers, para ello vamos a usar diagramas de caja (regla del boxplot):
+
+```{r}
+num_vars <- names(Mortalidad_tidy)[sapply(Mortalidad_tidy, is.numeric)]
+
+categoricas <- c("Comunidad", "Rango_Edad", "Sexo", "Año")
+
+plot_boxplot_by <- function(df, variable_numerica) {
+  ggplot(df, aes(y = .data[[variable_numerica]])) +
+    geom_boxplot(outlier.color = "red", fill = "skyblue", alpha = 0.5) +
+    theme_minimal(base_size = 13) +
+    labs(
+      title = paste("Valores extremos en", variable_numerica),
+      x = "",
+      y = variable_numerica
+    )
+}
+
+for (num in num_vars) {
+  suppressWarnings(print(plot_boxplot_by(Mortalidad_tidy, num)))
+}
+
+```
+Podemos ver, que en esperanza de vida no hay valores extremos, por lo que usaremos la media para analizarlo.
+
+En el resto de variables si hay outlayers
+
+```{r}
+detectar_outliers_stats <- function(df) {
+  numeric_vars <- df %>% select(where(is.numeric))
+  
+  map_dfr(names(numeric_vars), function(var) {
+    x <- numeric_vars[[var]]
+    Q1 <- quantile(x, 0.25, na.rm = TRUE)
+    Q3 <- quantile(x, 0.75, na.rm = TRUE)
+    IQR_val <- Q3 - Q1
+    n_out <- sum(x < (Q1 - 1.5 * IQR_val) | x > (Q3 + 1.5 * IQR_val), na.rm = TRUE)
+    total <- sum(!is.na(x))
+    porc <- (n_out / total) * 100
+    data.frame(
+      Variable = var,
+      N_Outliers = n_out,
+      Porcentaje = round(porc, 2),
+      Limite_inferior = round(Q1 - 1.5 * IQR_val, 2),
+      Limite_superior = round(Q3 + 1.5 * IQR_val, 2)
+    )
+  })
+}
+
+detectar_outliers_stats(Mortalidad_tidy)
+```
+
+
 ### Media
 
 A continuación se muestran las gráficas que representan la media de cada variable numérica en función de cada variable categórica
@@ -369,9 +423,6 @@ plot_mean_by <- function(df, variable_categorica, variable_numerica) {
     theme_minimal(base_size = 13)
 }
 
-num_vars <- names(Mortalidad_tidy)[sapply(Mortalidad_tidy, is.numeric)]
-
-categoricas <- c("Comunidad", "Rango_Edad", "Sexo", "Año")
 
 for (cat in categoricas) {
   for (num in num_vars) {
@@ -445,7 +496,7 @@ ggsave(filename = "data/plots/Evolucion_Esperanza_Vida.jpg", plot = Evolucion_mo
 
 Evolucion_mortalidad_Por_CA
 ```
-Se puede apreciar una caída de la esperanza de vida en el año 2020, que coincide exactamente con la pandemia de COVID-19:
+Se puede apreciar una caída generalizada de la esperanza de vida en el año 2020, que coincide exactamente con la pandemia de COVID-19:
 
 ```{r}
 Evolucion_mortalidad_Por_CA_Covid<-Mortalidad_tidy %>%
@@ -456,7 +507,7 @@ Evolucion_mortalidad_Por_CA_Covid<-Mortalidad_tidy %>%
   summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
   ggplot(aes(x = Año, y = Media_vida, color = Comunidad)) +
   geom_line(linewidth = 1) +
-  coord_cartesian(xlim = as.Date(c("2019-01-01", "2021-12-31"))) +  # 👈 centramos el rango
+  coord_cartesian(xlim = as.Date(c("2019-01-01", "2021-12-31"))) + 
   theme_minimal(base_size = 13) +
   labs(
     title = "Evolución esperanza de vida (2018–2022)",
@@ -498,7 +549,7 @@ suma_media_esperanza_vida_2019-suma_media_esperanza_vida_2020
 
 Durante el COVID, la disminución media de la esperanza de vida fue de:`diferencia=suma_media_esperanza_vida_2019-suma_media_esperanza_vida_2020`
 
-#### ¿Que rango de edad sufrió una mayor disminución de la esperanza de vida en la época covid?
+#### ¿Que rango de edad sufrió una mayor disminución de la esperanza de vida en la época COVID-19?
 
 ```{r}
 Evolucion_mortalidad_Por_Rango_Edad_Covid<-Mortalidad_tidy %>%
@@ -540,7 +591,6 @@ cambio_por_edad <- disminucion_por_edad %>%
 
 cambio_por_edad
 ```
-
 
 ### Mediana
 
