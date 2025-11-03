@@ -96,7 +96,7 @@ table(df_renta["Indicadores de renta media"])
 table(df_renta["Periodo"])
 ```
 
-Esto nos permite comprobar que la primera columna (``Total Nacional``) no nos aporta información adicional. Además, eliminaremos la cuarta columna (``Islas``), ya que nos centraremos en las provincias de España.
+Esto nos permite comprobar que la primera columna (``Total Nacional``) no nos aporta información adicional.
 
 Por otro lado, notamos que sería recomendable pasar a factor la columna del ``data.frame`` ``Indicadores de renta media``, para así ahorrar espacio en memoria.
 También deberíamos transformar la última columna (``Total``) a numérico.
@@ -104,28 +104,49 @@ También deberíamos transformar la última columna (``Total``) a numérico.
 En primer lugar, creemos un nuevo ``data.frame`` sin las columnas 1 y 4.
 
 ```{r}
-df_renta_red <- df_renta[,-c(1, 4)]
+df_renta_red <- df_renta[,-1]
 ```
 
 A continuación, pasemos a factor la columna ``Indicadores de renta media`` y a formato ``Date`` la columna ``Periodo``.
 
 ```{r}
 df_renta_red["Indicadores de renta media"] <- as.factor(df_renta_red[["Indicadores de renta media"]])
-```
 
-
-```{r}
-# df_renta_red <- df_renta_red %>% mutate("Indicadores de renta media", as.factor(df_renta_red[["Indicadores de renta media"]]))
-```
-
-
-```{r}
 df_renta_red$Periodo <- ymd(paste0(df_renta_red$Periodo, "-01-01"))
 ```
+
+Además, nos detecta la última columna (``Total``) como un vector de caracteres. Para pasarlo a numérico, utilizaremos la función ``gsub()`` para eliminar los puntos y la función ``as.numeric``
 
 ```{r}
 df_renta_red$Total <- gsub(pattern = "[.]", replacement = "", df_renta_red$Total)
 df_renta_red$Total <- as.numeric(df_renta_red$Total)
 ```
 
+Las primeras entradas del data frame se corresponden a los datos para toda España. Es por ello que las primeras dos columnas, correspondientes a ``Comunidades y Ciudades Autónomas`` y ``Provincias`` aparecen con valores ``NA``. No obstante, podemos obtener los valores para toda España sumando los de todas las provincias (son datos redundantes).
+
+Por tanto, eliminaremos las instancias correspondientes a estos valores totales, así como también los de los totales para cada comunidad autónoma (que se pueden obtener de igual forma sumando los de las provincias que la forman).
+
+En el caso de las islas, si nos fijamos de nuevo en los resultados obtenidos con la función ``table``, observamos que para las provincias con islas tenemos un mayor número de registros que para el resto. Esto se debe a que en el data frame se han incluido los valores totales para la provincia y también para cada una de las islas. 
+
+Tendremos, por tanto, que eliminar de nuestro data frame algunas filas. En primer lugar, las que no tengan ``NA`` en la columna ``Islas``, ya que registrarán los valores parciales para cada una de las islas. En segundo lugar, eliminaremos las instancias con valor ``NA`` en la columna ``Provincias``, ya que estas son las correspondientes a los valores totales para toda España o para cada comunidad autónoma.
+
+Para ello, utilizaremos la función ``filter()``.
+
+```{r}
+df_renta_red <- df_renta_red %>% filter(is.na(df_renta_red$Islas))  # Nos quedamos con los registros que tienen NA en la columna Islas
+
+df_renta_red <- df_renta_red %>% filter(!is.na(df_renta_red$Provincias))
+```
+
+Una vez hecho esto, ya podemos eliminar la columna islas, ya que nos centraremos en el análisis por provincias.
+
+```{r}
+df_renta_red <- df_renta_red[-3]
+```
+
+Comprobemos si, tras todo este proceso, nos ha quedado algún valor ``NA`` que no hayamos identificado. En tal caso, comprobaremos qué proporción representan.
+
+```{r}
+
+```
 
