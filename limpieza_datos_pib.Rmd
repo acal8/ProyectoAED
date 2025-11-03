@@ -202,14 +202,19 @@ riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A64,c("Cod_64","No
 
 str(riqueza_var)
 ```
+```{r}
+library(openxlsx)
+write.xlsx(riqueza_var, file = "./data/riqueza_tidy.xls", rowNames = FALSE)
+```
+
 Ahora procedemos a eliminar elementos de sumas totales de cada categoria
 ```{r}
 # Eliminar filas si hay NA en "columna1"
 
-df_limpio_riqueza <- riqueza_var %>% filter(!is.na(Nombre_A10) & !is.na(Nombre_21)& !is.na(Nombre_64))
-sum(is.na(df_limpio_riqueza$Total))
-df_limpio_riqueza%>%group_by(Agregados)%>%group_by()
-df_limpio_riqueza<-df_limpio_riqueza%>%mutate(Total=as.double(Total))
+# df_limpio_riqueza <- riqueza_var %>% filter(!is.na(Nombre_A10) & !is.na(Nombre_21)& !is.na(Nombre_64))
+# sum(is.na(df_limpio_riqueza$Total))
+#df_limpio_riqueza%>%group_by(Agregados)%>%group_by()
+df_limpio_riqueza<-riqueza_var%>%mutate(Total=as.double(Total))
 ```
 
 ```{r}
@@ -272,7 +277,7 @@ scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M"))
 
 
 ```{r}
-df_actividades_sanitarias
+
 ```
 
 
@@ -306,6 +311,10 @@ ggplot(df_limpio_riqueza, aes(x = Agregados, y = Total, color = Agregados)) +
   coord_flip() + # Volteamos el gráfico para leer mejor las categorías
   theme_minimal() +
   theme(legend.position = "none") # Ocultamos la leyenda (es redundante)
+```
+Para obtener los datops relacionados por las comunidades
+```{r}
+
 ```
 
 
