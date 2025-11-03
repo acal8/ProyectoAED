@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(pacman)
-packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "writexl", "readxl", "dplyr","leaflet","gganimate", "sf", "transformr", "rnaturalearth", "rnaturalearthdata","future","furrr","xlsx")
+packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "writexl", "readxl", "dplyr","leaflet","gganimate", "sf", "transformr", "rnaturalearth", "rnaturalearthdata","future","furrr","xlsx","mice")
 pacman::p_load(char=packages)
 
 ```
@@ -123,8 +123,7 @@ Mortalidad_tidy_backup<-Mortalidad_tidy
 names(Mortalidad_tidy) <- c(
   "Comunidad", "Sexo", "Rango_Edad", "Año",
   "Tasa_mortalidad", "Promedio_anos_vividos", "Riesgo_muerte",
-  "Supervivientes", "Defunciones_teoricas", "Poblacion_estacionaria",
-  "Tiempo_por_vivir", "Esperanza_de_vida"
+  "Supervivientes", "Defunciones_teoricas", "Poblacion_estacionaria", "Esperanza_de_vida"
 )
 ```
 ```{r}
@@ -132,7 +131,7 @@ names(Mortalidad_tidy_backup) <- c(
   "Comunidad", "Sexo", "Rango_Edad", "Año",
   "Tasa_mortalidad", "Promedio_anos_vividos", "Riesgo_muerte",
   "Supervivientes", "Defunciones_teoricas", "Poblacion_estacionaria",
-  "Tiempo_por_vivir", "Esperanza_de_vida"
+  "Esperanza_de_vida"
 )
 ```
 
@@ -149,7 +148,6 @@ Mortalidad_tidy <- Mortalidad_tidy %>%
     Supervivientes = parse_double(Supervivientes),
     Defunciones_teoricas = parse_double(Defunciones_teoricas),
     Poblacion_estacionaria = parse_double(Poblacion_estacionaria),
-    Tiempo_por_vivir = parse_double(Tiempo_por_vivir),
     Esperanza_de_vida = parse_double(Esperanza_de_vida)
   )
 
@@ -159,6 +157,9 @@ Mortalidad_tidy <- Mortalidad_tidy %>%
 write.xlsx(Mortalidad_tidy, "data/Mortalidad_tidy.xlsx")
 ```
 
+```{r}
+Mortalidad_tidy<-Mortalidad_tidy[-(30241:30252),]
+```
 
 
 # CARACTERÍSTICAS GENERALES.
@@ -168,7 +169,7 @@ El dataframe que vamos a analizar a continuación recoge datos relacionados con 
 - Número de registros y variables:
 
   * 33896 registros
-  * 8 variables
+  * 7 variables
   
 - Nombres de variables:
   
@@ -272,7 +273,7 @@ Mortalidad_tidy %>%
   coord_flip() +
   labs(
     title = "Proporción de valores faltantes por sexo",
-    x = "Rango de edad",
+    x = "Sexo",
     y = "Proporción de NA"
   )
 
@@ -284,7 +285,7 @@ Mortalidad_tidy %>%
   coord_flip() +
   labs(
     title = "Proporción de valores faltantes por comunidad",
-    x = "Rango de edad",
+    x = "Comunidad",
     y = "Proporción de NA"
   )
 ```
@@ -408,27 +409,27 @@ detectar_outliers_stats(Mortalidad_tidy)
 A continuación se muestran las gráficas que representan la media de cada variable numérica en función de cada variable categórica
 
 ```{r}
-plot_mean_by <- function(df, variable_categorica, variable_numerica) {
-  df %>%
-    group_by(.data[[variable_categorica]]) %>%
-    summarise(Media = mean(.data[[variable_numerica]], na.rm = TRUE)) %>%
-    ggplot(aes(x = reorder(.data[[variable_categorica]], Media), y = Media, fill = .data[[variable_categorica]])) +
-    geom_col(show.legend = FALSE) +
-    coord_flip() +
-    labs(
-      title = paste("Media de", variable_numerica, "por", variable_categorica),
-      x = variable_categorica,
-      y = paste("Media de", variable_numerica, "(‰)")
-    ) +
-    theme_minimal(base_size = 13)
-}
-
-
-for (cat in categoricas) {
-  for (num in num_vars) {
-    print(plot_mean_by(Mortalidad_tidy, cat, num))
-  }
-}
+# plot_mean_by <- function(df, variable_categorica, variable_numerica) {
+#   df %>%
+#     group_by(.data[[variable_categorica]]) %>%
+#     summarise(Media = mean(.data[[variable_numerica]], na.rm = TRUE)) %>%
+#     ggplot(aes(x = reorder(.data[[variable_categorica]], Media), y = Media, fill = .data[[variable_categorica]])) +
+#     geom_col(show.legend = FALSE) +
+#     coord_flip() +
+#     labs(
+#       title = paste("Media de", variable_numerica, "por", variable_categorica),
+#       x = variable_categorica,
+#       y = paste("Media de", variable_numerica, "(‰)")
+#     ) +
+#     theme_minimal(base_size = 13)
+# }
+# 
+# 
+# for (cat in categoricas) {
+#   for (num in num_vars) {
+#     print(plot_mean_by(Mortalidad_tidy, cat, num))
+#   }
+# }
 ```
 
 Con estas gráficas se pueden responder diferentes preguntas que nos hemos planteado:
@@ -597,49 +598,49 @@ cambio_por_edad
 A continuación se muestran las gráficas que representan la mediana de cada variable numérica en función de cada variable categórica
 
 ```{r}
-plot_median_by <- function(df, variable_categorica, variable_numerica) {
-  df %>%
-    group_by(.data[[variable_categorica]]) %>%
-    summarise(Mediana = median(.data[[variable_numerica]], na.rm = TRUE)) %>%
-    ggplot(aes(x = reorder(.data[[variable_categorica]], Mediana), y = Mediana, fill = .data[[variable_categorica]])) +
-    geom_col(show.legend = FALSE) +
-    coord_flip() +
-    labs(
-      title = paste("Mediana de", variable_numerica, "por", variable_categorica),
-      x = variable_categorica,
-      y = paste("Mediana de", variable_numerica, "(‰)")
-    ) +
-    theme_minimal(base_size = 13)
-}
-
-for (cat in categoricas) {
-  for (num in num_vars) {
-    print(plot_median_by(Mortalidad_tidy, cat, num))
-  }
-}
+# plot_median_by <- function(df, variable_categorica, variable_numerica) {
+#   df %>%
+#     group_by(.data[[variable_categorica]]) %>%
+#     summarise(Mediana = median(.data[[variable_numerica]], na.rm = TRUE)) %>%
+#     ggplot(aes(x = reorder(.data[[variable_categorica]], Mediana), y = Mediana, fill = .data[[variable_categorica]])) +
+#     geom_col(show.legend = FALSE) +
+#     coord_flip() +
+#     labs(
+#       title = paste("Mediana de", variable_numerica, "por", variable_categorica),
+#       x = variable_categorica,
+#       y = paste("Mediana de", variable_numerica, "(‰)")
+#     ) +
+#     theme_minimal(base_size = 13)
+# }
+# 
+# for (cat in categoricas) {
+#   for (num in num_vars) {
+#     print(plot_median_by(Mortalidad_tidy, cat, num))
+#   }
+# }
 ```
 
 ### Quantiles
 
 ```{r}
-plot_quartiles_by <- function(df, variable_categorica, variable_numerica) {
-  ggplot(df, aes(x = .data[[variable_categorica]], y = .data[[variable_numerica]], fill = .data[[variable_categorica]])) +
-    geom_boxplot(outlier.alpha = 0.3) +
-    coord_flip() +
-    labs(
-      title = paste("Distribución y cuartiles de", variable_numerica, "por", variable_categorica),
-      x = variable_categorica,
-      y = paste(variable_numerica, "(‰)")
-    ) +
-    theme_minimal(base_size = 13) +
-    theme(legend.position = "none")
-}
-
-for (cat in categoricas) {
-  for (num in num_vars) {
-    suppressWarnings(print(plot_quartiles_by(Mortalidad_tidy, cat, num)))
-  }
-}
+# plot_quartiles_by <- function(df, variable_categorica, variable_numerica) {
+#   ggplot(df, aes(x = .data[[variable_categorica]], y = .data[[variable_numerica]], fill = .data[[variable_categorica]])) +
+#     geom_boxplot(outlier.alpha = 0.3) +
+#     coord_flip() +
+#     labs(
+#       title = paste("Distribución y cuartiles de", variable_numerica, "por", variable_categorica),
+#       x = variable_categorica,
+#       y = paste(variable_numerica, "(‰)")
+#     ) +
+#     theme_minimal(base_size = 13) +
+#     theme(legend.position = "none")
+# }
+# 
+# for (cat in categoricas) {
+#   for (num in num_vars) {
+#     suppressWarnings(print(plot_quartiles_by(Mortalidad_tidy, cat, num)))
+#   }
+# }
 ```
 ### Desviación estandar
 
@@ -692,5 +693,96 @@ Varianza_por_grupo <- Mortalidad_tidy %>%
   ) %>%
   ungroup()
 ```
+
+# TRATAMIENTO DATA FRAME RELACIONADO CON LA RIQUEZA
+
+```{r}
+riqueza_tidy<-read_excel("data/riqueza_tidy.xlsx")
+
+#Nos quedamos con las columnas que nos interesan
+riqueza_tidy<-riqueza_tidy[-c(1:5)]
+
+#Modificamos las fechas para cuadrar el formato con el resto de dataframes
+riqueza_tidy <- riqueza_tidy %>%
+  mutate(
+    Periodo = ymd(paste0(Periodo, "-01-01")),
+  )
+
+names(riqueza_tidy)[2]<-"Año"
+
+
+```
+
+Como nos vamos a centrar en la actividad relacionada con la sanidad, nos quedamos con las observaciones realcionadas con eso.
+
+```{r}
+riqueza_tidy <- riqueza_tidy[grepl("Actividades sanitarias", riqueza_tidy$Nombre_64, ignore.case = TRUE), ]
+```
+
+
+## LIMPIEZA E IMPUTACIÓN DE DATOS
+
+A continuación se muestra la proporción de datos faltantes 
+
+```{r}
+sum(is.na(riqueza_tidy)) / (nrow(riqueza_tidy) * ncol(riqueza_tidy))*100
+```
+```{r}
+colMeans(is.na(riqueza_tidy)) * 100
+```
+La columna donde se concentran los datos faltantes es la de Total. 
+
+```{r}
+riqueza_tidy %>%
+  group_by(Año) %>%
+  summarise(prop_NA = mean(is.na(Total))) %>%
+  ggplot(aes(x = Año, y = prop_NA)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Proporción de valores faltantes por año",
+    x = "Año",
+    y = "Proporción de NA"
+  )
+```
+Todos los NA se concentran en el año 2024.
+
+```{r}
+  ggplot(riqueza_tidy,aes(x = Año, y = Total , color=Agregados)) +
+  geom_line(fill="steelblue") +
+  labs(
+    title = "evolución del valor añadido",
+    x = "valor añadido",
+    y = "valor añadido"
+  )
+
+```
+Se ha escogido mice porque permite imputar los valores faltantes mediante modelos de regresión multivariante, conservando las relaciones entre variables y la coherencia temporal de los datos.
+
+```{r}
+library(mice)
+
+# Realizar la imputación (5 datasets imputados)
+imp <- mice(riqueza_tidy, m = 5, method = "pmm", seed = 123)
+
+# Obtener un dataset completo imputado
+riqueza_tidy_imp <- complete(imp)
+```
+Para comprobar que la imputación de los datos no ha modificado demasiado los datos originales, hemos calculado la media y la desviación estandar de los mismos antes y después de la imputación:
+
+```{r}
+media_riqueza1<-mean(riqueza_tidy$Total,na.rm=TRUE)
+sd_riqueza1<-sd(riqueza_tidy$Total,na.rm=TRUE)
+
+media_riqueza2<-mean(riqueza_tidy_imp$Total,na.rm=TRUE)
+sd_riqueza2<-sd(riqueza_tidy_imp$Total,na.rm=TRUE)
+
+media_riqueza2/media_riqueza1
+sd_riqueza2/sd_riqueza1
+```
+Al añadir valores del último año y estar la tendencia en alza, es normal que obtengamos una media y una desviación estandar superior, pero aún así, el incremento no es muy elevado (1.04 y 1.05).
+
+# ANALISIS BIVARIANTE
+
 
 
