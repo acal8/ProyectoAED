@@ -314,7 +314,31 @@ ggplot(df_limpio_riqueza, aes(x = Agregados, y = Total, color = Agregados)) +
 ```
 Para obtener los datops relacionados por las comunidades
 ```{r}
-
+pib_comunidades<-  read.csv("./data/PIB_comunidades.csv", header=TRUE, sep=";")
+resumen_df(pib_comunidades)
+pib_comunidades_tidy<-pib_comunidades%>%mutate(Magnitud=as.factor(Magnitud))
+#pib_comunidades_tidy<-pib_comunidades%>%pivot_wider(names_from =Magnitud,values_from = Total )
+names(pib_comunidades_tidy) <- c("Comunidades", "Actividad", "Magnitud",'Periodo', 'Total')
+unique(pib_comunidades_tidy$Actividad)
+#Eliminamos actividades que no son actividades sino que se utilizan 
+del_Actividades<- c(
+  "PRODUCTO INTERIOR BRUTO A PRECIOS DE MERCADO",
+  "Valor añadido bruto total",
+  "Impuestos netos sobre los productos"
+)
+pib_comunidades_tidy<-pib_comunidades_tidy%>%filter(!Actividad %in% del_Actividades )%>%
+                     separarCodigoCNAE(Actividad,c("Cod_CNAE","Nombre_Actividad"))
+#Eliminamos caracteres de la variable Periodo
+pib_comunidades_tidy<-pib_comunidades_tidy%>%
+                    mutate(Periodo=as.numeric(Periodo%>%str_replace_all(.,pattern = "\\([A-Z]\\)","")))
+#(P) Estimación provisional.
+#(A) Estimación avance.
+#Procedimiento
+pib_comunidades_tidy<-pib_comunidades_tidy%>%
+                      pivot_wider(names_from =Magnitud,values_from = Total )
+#Fichero Tidy
+library(openxlsx)
+write.xlsx(riqueza_var, file = "./data/riqueza_comunidades_tidy.xls", rowNames = FALSE)
 ```
 
 
