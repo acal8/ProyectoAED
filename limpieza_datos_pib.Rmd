@@ -165,6 +165,7 @@ Ahora analizamos la estructura que tiene nuestro información
 
 ```{r,  echo=FALSE}
 resumen_df(riqueza)
+
 ```
 
 Del resumen podemos ver que hay información que no se carga correctamente :
@@ -198,18 +199,113 @@ riqueza_var$CNAE.Agrupación.A10[300]
 riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A10,c("Cod_10","Nombre_21"))
 riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A21,c("Cod_21","Nombre_10"))
 riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A64,c("Cod_64","Nombre_64"))
-  
+
+str(riqueza_var)
+```
+Ahora procedemos a eliminar elementos de sumas totales de cada categoria
+```{r}
+# Eliminar filas si hay NA en "columna1"
+
+df_limpio_riqueza <- riqueza_var %>% filter(!is.na(Nombre_A10) & !is.na(Nombre_21)& !is.na(Nombre_64))
+sum(is.na(df_limpio_riqueza$Total))
+df_limpio_riqueza%>%group_by(Agregados)%>%group_by()
+df_limpio_riqueza<-df_limpio_riqueza%>%mutate(Total=as.double(Total))
+```
+
+```{r}
+
+ggplot(df_limpio_riqueza, aes(x = as.factor(Periodo), y = Total, fill = Agregados)) +
+  geom_col() +  # 'geom_col()' es para barras donde la altura ya está definida (en 'Total')
+  labs(
+    title = "Total por Año, desglosado por Agregado",
+    x = "Año",
+    y = "Total",
+    fill = "Tipo de Agregado"
+  ) +
+  theme_minimal() + # Un tema limpio
+  coord_flip()+ # Opcional: Gira el gráfico para leer mejor las etiquetas si son muchas
+scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M"))
+```
+
+```{r}
+## 1. Sumariza los datos: agrupa por 'Agregados' y suma el 'Total'
+df_sumarizado_agregados <- df_limpio_riqueza %>%
+  group_by(Agregados) %>%
+  summarise(Suma_Total = sum(Total, na.rm = TRUE)) # na.rm = TRUE por si hay NAs en Total
+
+# 2. Gráfica el resumen
+ggplot(df_sumarizado_agregados, aes(x = reorder(Agregados, Suma_Total), y = Suma_Total)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Total Acumulado por Tipo de Agregado",
+    x = "Tipo de Agregado",
+    y = "Total Acumulado"
+  ) +
+  theme_minimal() +
+  coord_flip()+ # Muy recomendado aquí para leer bien los nombres de los agregados+
+  scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M"))
 ```
 
 
+Grafico en el que solo se tendra el cuenta el valor del PIB en sanidad en cada uno de los agregados
 
-Asi que modificamos esas variables:
-```{r,  echo=FALSE}
-#Variable Total ->Numerico
-riqueza_var<-riqueza_var%>%
-  mutate(CNAE.Agrupación.A10=factor(Agregados.macroeconómicos))%>% #Cambiamos a factor
-  select(-Agregados.macroeconómicos) #Eliminamos la columna
+```{r}
+# install.packages("ggplot2")
+# install.packages("dplyr")
+library(ggplot2)
+library(dplyr)
+library(scales) # Para el formato de números
 
-resumen_df(riqueza_var)
-
+df_actividades_sanitarias<-df_limpio_riqueza%>%filter(Nombre_64=='Actividades sanitarias')%>%
+  ggplot( aes(x = as.factor(Periodo), y = Total, fill = Agregados)) +
+  geom_col() +  # 'geom_col()' es para barras donde la altura ya está definida (en 'Total')
+  labs(
+    title = "Total por Año, desglosado por Agregado",
+    x = "Año",
+    y = "Total",
+    fill = "Tipo de Agregado"
+  ) +
+  theme_minimal() + # Un tema limpio
+  coord_flip()+ # Opcional: Gira el gráfico para leer mejor las etiquetas si son muchas
+scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M"))
 ```
+
+
+```{r}
+df_actividades_sanitarias
+```
+
+
+```{r}
+library(ggplot2)
+library(scales)
+
+# 'Periodo' se usa como eje numérico para mostrar la línea de tiempo
+ggplot(df_limpio_riqueza, aes(x = Periodo, y = Total, color = Agregados)) +
+  geom_point(alpha = 0.8, size = 2.5) +  # geom_point() crea el gráfico de dispersión
+  labs(
+    title = "Dispersión del Total por Año",
+    subtitle = "Coloreado por tipo de Agregado",
+    x = "Año",
+    y = "Total"
+  ) +
+  scale_y_continuous(labels = comma) + # Formato de números con comas
+  theme_minimal() +
+  theme(legend.position = "bottom") # Mueve la leyenda abajo
+```
+
+```{r}
+ggplot(df_limpio_riqueza, aes(x = Agregados, y = Total, color = Agregados)) +
+  geom_jitter(width = 0.2, alpha = 0.7) + # 'width' controla la dispersión horizontal
+  labs(
+    title = "Distribución del Total por Tipo de Agregado",
+    x = "Tipo de Agregado",
+    y = "Total"
+  ) +
+  scale_y_continuous(labels = comma) +
+  coord_flip() + # Volteamos el gráfico para leer mejor las categorías
+  theme_minimal() +
+  theme(legend.position = "none") # Ocultamos la leyenda (es redundante)
+```
+
+
