@@ -336,9 +336,37 @@ pib_comunidades_tidy<-pib_comunidades_tidy%>%
 #Procedimiento
 pib_comunidades_tidy<-pib_comunidades_tidy%>%
                       pivot_wider(names_from =Magnitud,values_from = Total )
+
+```
+Valor NA
+```{r}
+
+pib_comunidades_tidy
+names(pib_comunidades_tidy) <- c("Comunidades","Cod_CNAE", "Actividad",'Periodo', 'Total','Tasa_Variacion_Interanual','Estructura_porcentual')
+pib_comunidades_tidy<-pib_comunidades_tidy%>%
+                      mutate(Tasa_Variacion_Interanual=as.numeric(Tasa_Variacion_Interanual%>%
+                                                                    str_replace_all(., ",", ".")),
+                             Estructura_porcentual=as.numeric(Estructura_porcentual%>%
+                                                                str_replace_all(., ",", ".")))
+
+resumen_df(pib_comunidades_tidy)
+sum(is.na(pib_comunidades_tidy$Tasa_Variacion_Interanual))
+
+```
+Imputación de NA
+```{r}
+install.packages("imputeTS")
+library(imputeTS)
+
+pib_comunidades_tidy$Tasa_Variacion_Interanual<- na_interpolation(pib_comunidades_tidy$Tasa_Variacion_Interanual, option = "linear")
+
+
+
+unique(pib_comunidades_tidy$`Tasas de variación interanuales`)
+
 #Fichero Tidy
 library(openxlsx)
-write.xlsx(riqueza_var, file = "./data/riqueza_comunidades_tidy.xls", rowNames = FALSE)
+write.xlsx(riqueza_var, file = "./data/riqueza_comunidades_tidy.xlsx", rowNames = FALSE)
 ```
 
 
