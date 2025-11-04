@@ -40,6 +40,7 @@ Para la manipulación y funcionalidad se han definido diferentes funciones que s
 ```{r}
 #Funciones
 resumen_df <- function(data) {
+  cat("Registros:", dim(data)[1], "-------", "Variables diferentes:",dim(data)[2] )
   # Información que va a tener el resumen
   sumario <- data.frame(
     variable = character(),
@@ -98,6 +99,15 @@ resumen_df <- function(data) {
   
   return(sumario)
 }
+#Funcion para separar columnas para separar los codigos CNAE
+separarCodigoCNAE<-function(data,columna,codigo){
+  data%>%separate(
+    col = {{columna}},                     
+    into = codigo,  
+    sep = " ",                          
+    extra = "merge"                     
+  )
+}
 ```
 
 # Data
@@ -151,15 +161,11 @@ riqueza  <- read.csv("./data/RiquezaPIB.csv", header=TRUE, sep=";")
 
 ### DataSet  para el indicador de Riqueza e Ingreso
 Características de los dataset sin realizar modificaciones previas, ni definir tipo de datos. 
-
-```{r}
-# De la siguiente observación vemos que  se cuentan con 23520 observaciones 
-#y 7 variable
-dim(riqueza)
-```
 Ahora analizamos la estructura que tiene nuestro información
+
 ```{r,  echo=FALSE}
 resumen_df(riqueza)
+
 ```
 
 Del resumen podemos ver que hay información que no se carga correctamente :
@@ -175,7 +181,192 @@ riqueza_var<-riqueza%>%mutate(Total=as.numeric(gsub("\\.", "", Total)))%>%
 
 resumen_df(riqueza_var)
 
+```
+Segun el resumen de nuestra información, tenemos la variable *Total.CNAE*, que no aporta información significativa pues solo se repite un unico valor *Total.CNAE* , se usa para  obtener el total de todos los valores de la variable *Agregados.macroeconómicos*
+```{r}
+riqueza_var<-riqueza_var%>%select(-Total.CNAE)
+view(riqueza_var)
+```
 
-#Cambiamos nombre de Variables debido a que hay acentos y nombres muy extensos
+
+Por la informacion del documento las variables  *CNAE.Agrupación.A10* , *CNAE.Agrupación.A21* y *CNAE.Agrupación.A64* son de tipo categorica. Lo sabemos porque  CNAE son las siglas de Clasificación Nacional de Actividades Económicas.
+```{r}
+#Variable CNAE.Agrupación.A10  podemos ver que esta columna se podria separar 
+# 
+# Cod_A10 :Teniendo en cuenta que que los primeros digitos antes del primer espacio seria el codigo
+# Nombre_A10: Seria todo el restante
+riqueza_var$CNAE.Agrupación.A10[300]
+riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A10,c("Cod_10","Nombre_21"))
+riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A21,c("Cod_21","Nombre_10"))
+riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A64,c("Cod_64","Nombre_64"))
+
+str(riqueza_var)
+```
+```{r}
+library(openxlsx)
+write.xlsx(riqueza_var, file = "./data/riqueza_tidy.xls", rowNames = FALSE)
+```
+
+Ahora procedemos a eliminar elementos de sumas totales de cada categoria
+```{r}
+# Eliminar filas si hay NA en "columna1"
+
+# df_limpio_riqueza <- riqueza_var %>% filter(!is.na(Nombre_A10) & !is.na(Nombre_21)& !is.na(Nombre_64))
+# sum(is.na(df_limpio_riqueza$Total))
+#df_limpio_riqueza%>%group_by(Agregados)%>%group_by()
+df_limpio_riqueza<-riqueza_var%>%mutate(Total=as.double(Total))
+```
+
+```{r}
+
+ggplot(df_limpio_riqueza, aes(x = as.factor(Periodo), y = Total, fill = Agregados)) +
+  geom_col() +  # 'geom_col()' es para barras donde la altura ya está definida (en 'Total')
+  labs(
+    title = "Total por Año, desglosado por Agregado",
+    x = "Año",
+    y = "Total",
+    fill = "Tipo de Agregado"
+  ) +
+  theme_minimal() + # Un tema limpio
+  coord_flip()+ # Opcional: Gira el gráfico para leer mejor las etiquetas si son muchas
+scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M"))
+```
+
+```{r}
+## 1. Sumariza los datos: agrupa por 'Agregados' y suma el 'Total'
+df_sumarizado_agregados <- df_limpio_riqueza %>%
+  group_by(Agregados) %>%
+  summarise(Suma_Total = sum(Total, na.rm = TRUE)) # na.rm = TRUE por si hay NAs en Total
+
+# 2. Gráfica el resumen
+ggplot(df_sumarizado_agregados, aes(x = reorder(Agregados, Suma_Total), y = Suma_Total)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Total Acumulado por Tipo de Agregado",
+    x = "Tipo de Agregado",
+    y = "Total Acumulado"
+  ) +
+  theme_minimal() +
+  coord_flip()+ # Muy recomendado aquí para leer bien los nombres de los agregados+
+  scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M"))
+```
+
+
+Grafico en el que solo se tendra el cuenta el valor del PIB en sanidad en cada uno de los agregados
+
+```{r}
+# install.packages("ggplot2")
+# install.packages("dplyr")
+library(ggplot2)
+library(dplyr)
+library(scales) # Para el formato de números
+
+df_actividades_sanitarias<-df_limpio_riqueza%>%filter(Nombre_64=='Actividades sanitarias')%>%
+  ggplot( aes(x = as.factor(Periodo), y = Total, fill = Agregados)) +
+  geom_col() +  # 'geom_col()' es para barras donde la altura ya está definida (en 'Total')
+  labs(
+    title = "Total por Año, desglosado por Agregado",
+    x = "Año",
+    y = "Total",
+    fill = "Tipo de Agregado"
+  ) +
+  theme_minimal() + # Un tema limpio
+  coord_flip()+ # Opcional: Gira el gráfico para leer mejor las etiquetas si son muchas
+scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M"))
+```
+
+
+```{r}
 
 ```
+
+
+```{r}
+library(ggplot2)
+library(scales)
+
+# 'Periodo' se usa como eje numérico para mostrar la línea de tiempo
+ggplot(df_limpio_riqueza, aes(x = Periodo, y = Total, color = Agregados)) +
+  geom_point(alpha = 0.8, size = 2.5) +  # geom_point() crea el gráfico de dispersión
+  labs(
+    title = "Dispersión del Total por Año",
+    subtitle = "Coloreado por tipo de Agregado",
+    x = "Año",
+    y = "Total"
+  ) +
+  scale_y_continuous(labels = comma) + # Formato de números con comas
+  theme_minimal() +
+  theme(legend.position = "bottom") # Mueve la leyenda abajo
+```
+
+```{r}
+ggplot(df_limpio_riqueza, aes(x = Agregados, y = Total, color = Agregados)) +
+  geom_jitter(width = 0.2, alpha = 0.7) + # 'width' controla la dispersión horizontal
+  labs(
+    title = "Distribución del Total por Tipo de Agregado",
+    x = "Tipo de Agregado",
+    y = "Total"
+  ) +
+  scale_y_continuous(labels = comma) +
+  coord_flip() + # Volteamos el gráfico para leer mejor las categorías
+  theme_minimal() +
+  theme(legend.position = "none") # Ocultamos la leyenda (es redundante)
+```
+Para obtener los datops relacionados por las comunidades
+```{r}
+pib_comunidades<-  read.csv("./data/PIB_comunidades.csv", header=TRUE, sep=";")
+resumen_df(pib_comunidades)
+pib_comunidades_tidy<-pib_comunidades%>%mutate(Magnitud=as.factor(Magnitud))
+#pib_comunidades_tidy<-pib_comunidades%>%pivot_wider(names_from =Magnitud,values_from = Total )
+names(pib_comunidades_tidy) <- c("Comunidades", "Actividad", "Magnitud",'Periodo', 'Total')
+unique(pib_comunidades_tidy$Actividad)
+#Eliminamos actividades que no son actividades sino que se utilizan 
+del_Actividades<- c(
+  "PRODUCTO INTERIOR BRUTO A PRECIOS DE MERCADO",
+  "Valor añadido bruto total",
+  "Impuestos netos sobre los productos"
+)
+pib_comunidades_tidy<-pib_comunidades_tidy%>%filter(!Actividad %in% del_Actividades )%>%
+                     separarCodigoCNAE(Actividad,c("Cod_CNAE","Nombre_Actividad"))
+#Eliminamos caracteres de la variable Periodo
+pib_comunidades_tidy<-pib_comunidades_tidy%>%
+                    mutate(Periodo=as.numeric(Periodo%>%str_replace_all(.,pattern = "\\([A-Z]\\)","")))
+#(P) Estimación provisional.
+#(A) Estimación avance.
+#Procedimiento
+pib_comunidades_tidy<-pib_comunidades_tidy%>%
+                      pivot_wider(names_from =Magnitud,values_from = Total )
+
+```
+Valor NA
+```{r}
+
+pib_comunidades_tidy
+names(pib_comunidades_tidy) <- c("Comunidades","Cod_CNAE", "Actividad",'Periodo', 'Total','Tasa_Variacion_Interanual','Estructura_porcentual')
+pib_comunidades_tidy<-pib_comunidades_tidy%>%
+                      mutate(Tasa_Variacion_Interanual=as.numeric(Tasa_Variacion_Interanual%>%
+                                                                    str_replace_all(., ",", ".")),
+                             Estructura_porcentual=as.numeric(Estructura_porcentual%>%
+                                                                str_replace_all(., ",", ".")))
+
+resumen_df(pib_comunidades_tidy)
+sum(is.na(pib_comunidades_tidy$Tasa_Variacion_Interanual))
+
+```
+Imputación de NA
+```{r}
+install.packages("imputeTS")
+library(imputeTS)
+
+pib_comunidades_tidy$Tasa_Variacion_Interanual<- na_interpolation(pib_comunidades_tidy$Tasa_Variacion_Interanual, option = "linear")
+
+
+
+unique(pib_comunidades_tidy$`Tasas de variación interanuales`)
+
+#Fichero Tidy
+library(openxlsx)
+write.xlsx(riqueza_var, file = "./data/riqueza_comunidades_tidy.xlsx", rowNames = FALSE)
+```
+
+
