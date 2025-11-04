@@ -175,23 +175,23 @@ filas_na <- df_renta_red[is.na(df_renta_red$Total),]
 filas_na[c("Provincias", "Indicadores de renta media", "Periodo")]
 ```
 
-Nos faltan datos de todos los indicadores de renta media para Navarra desde 2015 a 2020, para Álava de 2015 a 2019 y para Gipuzkoa de 2015.
+Es decir, que nos faltan datos de todos los indicadores de renta media para Navarra desde 2015 a 2020, para Álava de 2015 a 2019 y para Gipuzkoa de 2015.
 
 
 
 ```{r}
-media_provincias <- mean 
+# media_provincias <- mean 
 ```
 
 
 Para detectar outliers
 
 ```{r}
-qqplot()
+# qqplot()
 ```
 
 ```{r}
-summary()
+# summary()
 ```
 
 Guardamos el data set tidy en la carpeta data en formato ``xlsx``.
