@@ -28,7 +28,7 @@ knit_hooks$set(inline = function(x) {
 
 ```{r}
 library(pacman)
-packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr")
+packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr", "writexl", "xlsx")
 pacman::p_load(char=packages)
 ```
 
@@ -101,7 +101,7 @@ Esto nos permite comprobar que la primera columna (``Total Nacional``) no nos ap
 Por otro lado, notamos que sería recomendable pasar a factor la columna del ``data.frame`` ``Indicadores de renta media``, para así ahorrar espacio en memoria.
 También deberíamos transformar la última columna (``Total``) a numérico.
 
-En primer lugar, creemos un nuevo ``data.frame`` sin las columnas 1 y 4.
+En primer lugar, creemos un nuevo ``data.frame`` sin la columna 1.
 
 ```{r}
 df_renta_red <- df_renta[,-1]
@@ -115,7 +115,7 @@ df_renta_red["Indicadores de renta media"] <- as.factor(df_renta_red[["Indicador
 df_renta_red$Periodo <- ymd(paste0(df_renta_red$Periodo, "-01-01"))
 ```
 
-Además, nos detecta la última columna (``Total``) como un vector de caracteres. Para pasarlo a numérico, utilizaremos la función ``gsub()`` para eliminar los puntos y la función ``as.numeric``
+Además, nos detecta la última columna (``Total``) como un vector de caracteres. Para pasarlo a numérico, utilizaremos la función ``gsub()`` para eliminar los puntos y la función ``as.numeric`` para pasar la columna resultante a numérico.
 
 ```{r}
 df_renta_red$Total <- gsub(pattern = "[.]", replacement = "", df_renta_red$Total)
@@ -144,9 +144,58 @@ Una vez hecho esto, ya podemos eliminar la columna islas, ya que nos centraremos
 df_renta_red <- df_renta_red[-3]
 ```
 
-Comprobemos si, tras todo este proceso, nos ha quedado algún valor ``NA`` que no hayamos identificado. En tal caso, comprobaremos qué proporción representan.
+Comprobemos si, tras todo este proceso, nos han quedado valores ``NA`` que no hayamos identificado. En tal caso, comprobaremos qué proporción representan.
 
 ```{r}
+num_na <- sum(is.na(df_renta_red))
+prop_na <- round(sum(is.na(df_renta_red))/dim(df_renta_red)[1], digits = 4)
 
+cat("El número de valores NA restantes es", num_na, "y la proporción de los mismos es aproximadamente", paste0(prop_na, "."))
+```
+Usaremos la función ``summary()`` para obtener el número de valores perdidos por variable, y así poder identificar dónde tenemos esos ``NA``.
+
+```{r}
+summary(df_renta_red)
 ```
 
+Comprobemos que no hay ningún ``NA`` en las columnas de caracteres que nos detecte como una cadena de caracteres más
+
+```{r}
+unique(df_renta_red["Comunidades y Ciudades Autónomas"])
+unique(df_renta_red["Provincias"])
+unique(df_renta_red["Indicadores de renta media"])
+unique(df_renta_red["Periodo"])
+```
+
+Por tanto, todos los ``NA`` están en la columna ``Total``. Estudiemos las filas correspondientes a estos valores.
+
+```{r}
+filas_na <- df_renta_red[is.na(df_renta_red$Total),]
+
+filas_na[c("Provincias", "Indicadores de renta media", "Periodo")]
+```
+
+Nos faltan datos de todos los indicadores de renta media para Navarra desde 2015 a 2020, para Álava de 2015 a 2019 y para Gipuzkoa de 2015.
+
+
+
+```{r}
+media_provincias <- mean 
+```
+
+
+Para detectar outliers
+
+```{r}
+qqplot()
+```
+
+```{r}
+summary()
+```
+
+Guardamos el data set tidy en la carpeta data en formato ``xlsx``.
+
+```{r}
+write.xlsx(df_renta_red, "data/Renta_media_mediana_tidy.xlsx")
+```
