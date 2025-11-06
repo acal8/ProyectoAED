@@ -199,3 +199,51 @@ Guardamos el data set tidy en la carpeta data en formato ``xlsx``.
 ```{r}
 write.xlsx(df_renta_red, "data/Renta_media_mediana_tidy.xlsx")
 ```
+
+Existe un dataset de renta media y mediana por comunidades autónomas, con datos desde 2008 a 2024
+
+```{r}
+df_renta_CCAA <- read_delim("data/Renta_media_mediana_CCAA.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ",", 
+        grouping_mark = "."), trim_ws = TRUE)
+```
+
+Investiguemos este nuevo dataset. Veamos en primer lugar su estructura con la función ``str()``.
+
+```{r}
+str(df_renta_CCAA)
+```
+Veamos los valores únicos de cada variable.
+
+```{r}
+unique(df_renta_CCAA['Renta media y mediana'])
+unique(df_renta_CCAA['Comunidad autónoma'])
+unique(df_renta_CCAA['Periodo'])
+```
+
+Observamos que la columna ``Renta media y mediana`` tan solo tomas dos valores, pero la hemos importado como vector de caracteres. Deberíamos transformarla a factor.
+
+```{r}
+df_renta_CCAA <- df_renta_CCAA %>% mutate(`Renta media y mediana` = as.factor(`Renta media y mediana`))
+```
+
+De igual forma, deberíamos pasar la columna ``Periodo`` a formato ``Date``.
+
+```{r}
+df_renta_CCAA$Periodo <- ymd(paste0(df_renta_CCAA$Periodo, "-01-01"))
+```
+
+Comprobemos si tenemos datos faltantes en este dataset con la función ``is.na()``.
+
+```{r}
+num_na_CCAA <- sum(is.na(df_renta_CCAA))
+
+cat("El número de valores NA en el data frame es", paste0(num_na_CCAA, "."))
+```
+
+Por tanto, en este caso no tenemos datos faltantes.
+
+```{r}
+write.xlsx(df_renta_CCAA, "data/Renta_media_mediana_CCAA_tidy.xlsx")
+```
+
