@@ -109,10 +109,21 @@ for (i in tidy_data_list){
 Mortalidad_tidy_backup<-Mortalidad_tidy
 ```
 
+```{r}
+Mortalidad_tidy<-Mortalidad_tidy_backup
+```
+
+
+```{r}
+Mortalidad_tidy<-Mortalidad_tidy[,-c(11)]
+```
+
 
 
 
 ```{r}
+
+
 names(Mortalidad_tidy) <- c(
   "Comunidad", "Sexo", "Rango_Edad", "Año",
   "Tasa_mortalidad", "Promedio_anos_vividos", "Riesgo_muerte",
@@ -130,19 +141,45 @@ names(Mortalidad_tidy_backup) <- c(
 ```
 
 ```{r}
+
+niveles <- c(
+  "0 años",
+  "De 1 a 4 años",
+  "De 5 a 9 años",
+  "De 10 a 14 años",
+  "De 15 a 19 años",
+  "De 20 a 24 años",
+  "De 25 a 29 años",
+  "De 30 a 34 años",
+  "De 35 a 39 años",
+  "De 40 a 44 años",
+  "De 45 a 49 años",
+  "De 50 a 54 años",
+  "De 55 a 59 años",
+  "De 60 a 64 años",
+  "De 65 a 69 años",
+  "De 70 a 74 años",
+  "De 75 a 79 años",
+  "De 80 a 84 años",
+  "De 85 a 89 años",
+  "De 90 a 94 años",
+  "De 95 y más años"
+)
+
+
 Mortalidad_tidy <- Mortalidad_tidy %>%
   mutate(
     Comunidad = as.character(Comunidad),
     Sexo = as.character(Sexo),
-    Rango_Edad = as.character(Rango_Edad),
-    Año = ymd(paste0(Año, "-01-01")),
-    Tasa_mortalidad = parse_double(Tasa_mortalidad),
-    Promedio_anos_vividos = parse_double(Promedio_anos_vividos),
-    Riesgo_muerte = parse_double(Riesgo_muerte),
-    Supervivientes = parse_double(Supervivientes),
-    Defunciones_teoricas = parse_double(Defunciones_teoricas),
-    Poblacion_estacionaria = parse_double(Poblacion_estacionaria),
-    Esperanza_de_vida = parse_double(Esperanza_de_vida)
+    Rango_Edad = factor(Rango_Edad, levels = niveles),
+    Año = as.Date(paste0(Año, "-01-01")),
+    Tasa_mortalidad = as.numeric(Tasa_mortalidad),
+    Promedio_anos_vividos = as.numeric(Promedio_anos_vividos),
+    Riesgo_muerte = as.numeric(Riesgo_muerte),
+    Supervivientes = as.numeric(Supervivientes),
+    Defunciones_teoricas = as.numeric(Defunciones_teoricas),
+    Poblacion_estacionaria = as.numeric(Poblacion_estacionaria),
+    Esperanza_de_vida = as.numeric(Esperanza_de_vida)
   )
 
 
@@ -150,6 +187,11 @@ Mortalidad_tidy <- Mortalidad_tidy %>%
 ```{r}
 write.xlsx(Mortalidad_tidy, "data/Mortalidad_tidy.xlsx")
 ```
+
+```{r}
+Mortalidad_tidy<-read_excel("data/Mortalidad_tidy.xlsx")
+```
+
 
 ```{r}
 Mortalidad_tidy<-Mortalidad_tidy[-(30241:30252),]
@@ -300,7 +342,7 @@ sum(is.na(Mortalidad_tidy)) / (nrow(Mortalidad_tidy) * ncol(Mortalidad_tidy))*10
 colMeans(is.na(Mortalidad_tidy)) * 100
 
 ```
-Ahora el data frame cuenta con un 0.66% de datos faltantes, un valor muy bajo
+Ahora el data frame cuenta con un `sum(is.na(Mortalidad_tidy)) / (nrow(Mortalidad_tidy) * ncol(Mortalidad_tidy))*100` de datos faltantes, un valor muy bajo
 
 ```{r}
 Mortalidad_tidy %>%
@@ -339,6 +381,79 @@ Mortalidad_tidy %>%
     y = "Proporción de NA"
   )
 ```
+El resto de NAs al ser tan pocos, y centrados solo en tres Comunidades Autonomas, hemos decidido dejar esos NA y realizar los cálculos de los estadísticos obviándolos
+
+#DETECCIÓN DE OUTLAYERS
+
+A continuación vamos a realizar un estudio para encontrar outlayer de la variable esperanza de vida y tasa de mortalidad en el dataframe en función de la edad.
+
+Para ello vamos a aplicar diferentes métodos:
+
+```{r}
+Mortalidad_tidy_Rango_Edad<-Mortalidad_tidy %>% 
+  select(
+    Rango_Edad,
+    Esperanza_de_vida,
+    Tasa_mortalidad
+  )
+
+x_esperanza_de_vida <- Mortalidad_tidy_Rango_Edad$Esperanza_de_vida
+x_tasa_mortalidad <- Mortalidad_tidy_Rango_Edad$Tasa_mortalidad
+
+#REGLA 3 SIGMA
+
+media_x_esperanza_de_vida <- mean(x_esperanza_de_vida,na.rm=TRUE)
+sd_x_esperanza_de_vida<- sd(x_esperanza_de_vida,na.rm=TRUE)
+
+media_x_tasa_mortalidad <- mean(x_tasa_mortalidad,na.rm=TRUE)
+sd_x_tasa_mortalidad<- sd(x_tasa_mortalidad,na.rm=TRUE)
+
+# umbrales
+lim_inf_esperanza_de_vida <- media_x_esperanza_de_vida - 3 * sd_x_esperanza_de_vida
+lim_sup_esperanza_de_vida <- media_x_esperanza_de_vida + 3 * sd_x_esperanza_de_vida
+
+lim_inf_x_tasa_mortalidad <- media_x_tasa_mortalidad - 3 * sd_x_tasa_mortalidad
+lim_sup_x_tasa_mortalidad <- media_x_tasa_mortalidad + 3 * sd_x_tasa_mortalidad
+
+# cuáles son outliers según 3 sigma
+out_sigma_esperanza_de_vida <- x_esperanza_de_vida < lim_inf_esperanza_de_vida | x_esperanza_de_vida > lim_sup_esperanza_de_vida
+out_sigma_tasa_mortalidad <- x_tasa_mortalidad < lim_inf_x_tasa_mortalidad | x_tasa_mortalidad > lim_sup_x_tasa_mortalidad
+
+n_out_sigma_ev<-sum(as.vector(out_sigma_esperanza_de_vida),na.rm = TRUE)
+n_out_sigma_tm<-sum(as.vector(out_sigma_tasa_mortalidad),na.rm = TRUE)
+
+print(n_out_sigma_ev)
+print(n_out_sigma_tm)
+
+# REGLA HAMPEL
+
+mediana_x_esperanza_vida <- median(x_esperanza_de_vida)
+mad_x_esperanza_vida     <- mad(x_esperanza_de_vida)
+
+lim_inf_h_esperanza_vida <- mediana_x_esperanza_vida - 3 * mad_x_esperanza_vida
+lim_sup_h_esperanza_vida <- mediana_x_esperanza_vida + 3 * mad_x_esperanza_vida
+
+out_hampel_esperanza_vida <- x < lim_inf_h_esperanza_vida | x > lim_sup_h_esperanza_vida
+
+n_out_hampel_ev<-sum(as.vector(out_hampel_esperanza_vida),na.rm=TRUE)
+
+#Tasa mortalidad
+
+mediana_x_tasa_mortalidad <- median(x_esperanza_de_vida)
+mad_x_tasa_mortalidad     <- mad(x_esperanza_de_vida)
+
+lim_inf_h_tasa_mortalidad <- mediana_x_tasa_mortalidad - 3 * mad_x_tasa_mortalidad
+lim_sup_h_tasa_mortalidad <- mediana_x_tasa_mortalidad + 3 * mad_x_tasa_mortalidad
+
+out_hampel_tasa_mortalidad <- x < lim_inf_h_tasa_mortalidad | x > lim_sup_h_tasa_mortalidad
+
+n_out_hampel_tm<-sum(as.vector(out_hampel_tasa_mortalidad),na.rm=TRUE)
+```
+
+El número de outlayers según la regla \textbf{Sigma 3} es: `n_out_sigma_ev` para la esperanza de vida y para la tasa de mortalidad es de `n_out_sigma_tm`. Para la regla de \textbf{Hampel} es: `n_out_hampel_ev` y `n_out_hampel_tm` para la esperanza de vida y la tasa de mortalidad respectivamente.
+
+El valor tan elevado en la tasa de mortalidad  se debe a que lo máximo de la tasa de mortalidad está en De 95 y más años, donde llega a ~923 por mil, y en edades muy altas también sube mucho. Eso es exactamente lo que debe pasar: la mortalidad crece con la edad. No es un outlier, es la realidad de ese grupo.
+
 
 # ANÁLISIS UNIVARIANTE:
 
@@ -349,35 +464,35 @@ Mortalidad_tidy %>%
 A continuación se muestran las gráficas que representan la media de cada variable numérica en función de cada variable categórica
 
 ```{r}
-# plot_mean_by <- function(df, variable_categorica, variable_numerica) {
-#   df %>%
-#     group_by(.data[[variable_categorica]]) %>%
-#     summarise(Media = mean(.data[[variable_numerica]], na.rm = TRUE)) %>%
-#     ggplot(aes(x = reorder(.data[[variable_categorica]], Media), y = Media, fill = .data[[variable_categorica]])) +
-#     geom_col(show.legend = FALSE) +
-#     coord_flip() +
-#     labs(
-#       title = paste("Media de", variable_numerica, "por", variable_categorica),
-#       x = variable_categorica,
-#       y = paste("Media de", variable_numerica, "(‰)")
-#     ) +
-#     theme_minimal(base_size = 13)
-# }
+plot_mean_by <- function(df, variable_categorica, variable_numerica) {
+  df %>%
+    group_by(.data[[variable_categorica]]) %>%
+    summarise(Media = mean(.data[[variable_numerica]], na.rm = TRUE)) %>%
+    ggplot(aes(x = reorder(.data[[variable_categorica]], Media), y = Media, fill = .data[[variable_categorica]])) +
+    geom_col(show.legend = FALSE) +
+    coord_flip() +
+    labs(
+      title = paste("Media de", variable_numerica, "por", variable_categorica),
+      x = variable_categorica,
+      y = paste("Media de", variable_numerica, "(‰)")
+    ) +
+    theme_minimal(base_size = 13)
+}
+
+num_vars <- names(Mortalidad_tidy)[sapply(Mortalidad_tidy, is.numeric)]
 # 
-# num_vars <- names(Mortalidad_tidy)[sapply(Mortalidad_tidy, is.numeric)]
-# 
-# categoricas <- c("Comunidad", "Rango_Edad", "Sexo", "Año")
-# 
-# for (cat in categoricas) {
-#   for (num in num_vars) {
-#     print(plot_mean_by(Mortalidad_tidy, cat, num))
-#   }
-# }
+categoricas <- c("Comunidad", "Rango_Edad", "Sexo", "Año")
+
+for (cat in categoricas) {
+  for (num in num_vars) {
+    print(plot_mean_by(Mortalidad_tidy, cat, num))
+  }
+}
 ```
 
 Con estas gráficas se pueden responder diferentes preguntas que nos hemos planteado:
 
-#### ¿¿Cuál es la esperanza de vida media en España en el último año disponible?
+#### ¿Cuál es la esperanza de vida media en España en el último año disponible? ¿Qué Comunidad Autónoma es la que más tiene, y la que menos?
 
 Para este análisis de la esperanza de vida se ha escogido calcular la media para una edad de 0 años. 
 
@@ -534,12 +649,89 @@ cambio_por_edad <- disminucion_por_edad %>%
   arrange(Disminucion)
 
 cambio_por_edad
+
 ```
 
+# ANÁLISIS BIVARIANTE
+
+### ¿Como evoluciona la esperanza de vida y la tasa de muerte en función al rango de edad?
+
+```{r}
+df_age <- Mortalidad_tidy %>%
+  group_by(Rango_Edad) %>%
+  summarise(
+    tasa_mortalidad = mean(Tasa_mortalidad, na.rm = TRUE) / 1000,  # de ‰ a proporción
+    esperanza_vida  = mean(Esperanza_de_vida, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+max_tasa <- max(df_age$tasa_mortalidad, na.rm = TRUE)
+max_esp  <- max(df_age$esperanza_vida, na.rm = TRUE)
+factor_conv <- max_tasa / max_esp
+
+ggplot(df_age, aes(x = Rango_Edad, group = 1)) +
+  # línea suavizada de tasa de mortalidad
+  geom_smooth(aes(y = tasa_mortalidad, colour = "Tasa de mortalidad"),
+              se = FALSE, method = "loess", span = 0.5) +
+  # línea suavizada de esperanza de vida (re-escalada)
+  geom_smooth(aes(y = esperanza_vida * factor_conv,
+                  colour = "Esperanza de vida"),
+              se = FALSE, method = "loess", span = 0.5) +
+  scale_y_continuous(
+    name = "Tasa de mortalidad (proporción)",
+    sec.axis = sec_axis(~ . / factor_conv,
+                        name = "Esperanza de vida (años)")
+  ) +
+  scale_colour_manual(values = c("Tasa de mortalidad" = "red",
+                                 "Esperanza de vida" = "blue")) +
+  labs(
+    x = "Rango de edad",
+    colour = ""
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+En esta gráfica se puede observar que a partir del rango de edad de 50 a 54 años el crecimiento de la tasa de mortalidad es exponencial, debido al aumento de los problemas de salud que hay a altas edades. También se aprecia que con 0 años la tasa de mortalidad es algo más elevada que con un rango de 1 a 4 años, por el riesgo que se tiene como recién nacido.
+
+La esperanza de vida disminuye de forma lineal aunque se pueden apreciar varias curvas leves.
 
 ### Mediana
 
-A continuación se muestran las gráficas que representan la mediana de cada variable numérica en función de cada variable categórica
+A continuación se muestran las gráficas que representan la mediana de cada variable numérica en función de cada variable categórica.
+
+
+```{r}
+# library(dplyr)
+# library(GGally)
+# 
+# df_medias <- Mortalidad_tidy %>%
+#   group_by(Rango_Edad) %>%
+#   summarise(
+#     Tasa_mortalidad   = mean(Tasa_mortalidad, na.rm = TRUE),
+#     Esperanza_de_vida = mean(Esperanza_de_vida, na.rm = TRUE)
+#     # aquí podrías meter más vars si quieres
+#   ) %>%
+#   ungroup() %>%
+#   mutate(Rango_Edad = factor(Rango_Edad, levels = niveles))
+# 
+# ggplot(df_medias, aes(x = Tasa_mortalidad, y = Esperanza_de_vida)) +
+#   geom_point() +
+#   geom_smooth(method = "lm", se = FALSE, colour = "red") +
+#   labs(
+#     x = "Tasa de mortalidad (Tanto por miles)",
+#     y = "Esperanza de vida",
+#     title = "Relación entre mortalidad y esperanza de vida"
+#   ) +
+#   theme_minimal()
+```
+
+La gráfica muestra una relación inversa muy clara entre la tasa de mortalidad y la esperanza de vida: a medida que aumenta la mortalidad media de un grupo de edad, la esperanza de vida asociada a ese grupo disminuye de forma casi lineal. Al usar la escala logarítmica en el eje de la mortalidad se ve que este descenso es muy regular: incluso cuando la mortalidad se multiplica (pasa de valores muy bajos en edades jóvenes a valores muy altos en edades avanzadas), la esperanza de vida va cayendo de manera progresiva y predecible. Esto confirma la lógica demográfica básica: los grupos de edad con mayor riesgo de morir en el próximo intervalo son precisamente los que tienen menos años de vida esperados por delante. Unos pocos puntos se apartan ligeramente de la recta, pero no cambian el patrón principal de fuerte asociación negativa. (MODIFICAR)
+
+
+
 
 ```{r}
 # plot_median_by <- function(df, variable_categorica, variable_numerica) {
@@ -631,7 +823,6 @@ Varianza_por_grupo <- Mortalidad_tidy %>%
     Var_Supervivientes     = var(Supervivientes, na.rm = TRUE),
     Var_Riesgo_muerte     = var(Riesgo_muerte, na.rm = TRUE),
     Var_Poblacion_estacionaria     = var(Poblacion_estacionaria, na.rm = TRUE),
-    Var_Tiempo_por_vivir = var(Tiempo_por_vivir, na.rm=TRUE),
     var_Esperanza_de_vida = var(Esperanza_de_vida, na.rm=TRUE)
     
   ) %>%
@@ -693,7 +884,7 @@ Todos los NA se concentran en el año 2024.
 
 ```{r}
   ggplot(riqueza_tidy,aes(x = Año, y = Total , color=Agregados)) +
-  geom_line(fill="steelblue") +
+  geom_line() +
   labs(
     title = "evolución del valor añadido",
     x = "valor añadido",
@@ -726,6 +917,94 @@ sd_riqueza2/sd_riqueza1
 ```
 Al añadir valores del último año y estar la tendencia en alza, es normal que obtengamos una media y una desviación estandar superior, pero aún así, el incremento no es muy elevado (1.04 y 1.05).
 
+## Detección de outlayers
+
+Para el análisis de outlayers vamos a realizar lo mismo que hemos hecho con el anterior dataframe
 
 
-# ANALISIS BIVARIANTE
+```{r}
+riqueza_tidy_select<-riqueza_tidy_imp %>%
+  select(
+    Total,
+    Agregados
+  ) %>% 
+  group_by(
+    Agregados
+  ) %>% ungroup()
+  
+
+x <- riqueza_tidy_select$Total
+
+
+#REGLA 3 SIGMA
+
+media_x <- mean(x)
+sd_x    <- sd(x)
+
+#3 SIGMA
+
+# umbrales
+lim_inf <- media_x - 3 * sd_x
+lim_sup <- media_x + 3 * sd_x
+
+# cuáles son outliers según 3 sigma
+out_sigma <- x < lim_inf | x > lim_sup
+
+numero_outlayers_sigma<-sum(out_sigma)
+
+which(out_sigma)   
+x[out_sigma]
+print(numero_outlayers_sigma)
+# REGLA HAMPEL
+
+mediana_x <- median(x)
+mad_x     <- mad(x)
+
+lim_inf_h <- mediana_x - 3 * mad_x
+lim_sup_h <- mediana_x + 3 * mad_x
+
+out_hampel <- x < lim_inf_h | x > lim_sup_h
+
+numero_outlayers_hampel<-sum(out_hampel)
+which(out_hampel)   
+x[out_hampel]
+print(numero_outlayers_hampel)
+
+write.xlsx(riqueza_tidy_select,"data/riqueza_tidy_select.xlsx")
+```
+Hemos detectado esos outlayers, esos valores son outlayers debido al tipo de agregado, no porque realmente sean outlayer(MODIFICAR)
+
+# ¿Como se relaciona la tasa de mortalidad con el peso económico del sector sanitario?
+
+Para ello sacamos varios gráficos de dispersión en el que relacionamos el total del PIB por agregado y la tasa de mortalidad.
+
+```{r}
+df_medias_anuales <- Mortalidad_tidy %>% 
+  group_by(
+    Año
+  ) %>%
+  summarise(
+    media_tasa_mortalidad   = mean(Tasa_mortalidad, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+Mortalidad_riqueza<-merge(df_medias_anuales,riqueza_tidy_imp,by="Año")
+```
+
+```{r}
+ggplot(Mortalidad_riqueza,
+       aes(x = Total, y = media_tasa_mortalidad)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", size = 0.5) +
+  facet_wrap(~ Agregados, scales = "free_x") +
+  labs(
+    title = "media_tasa_mortalidad vs Total por agregado",
+    x = "Total (millones €)",
+    y = "Media tasa de mortalidad"
+  ) +
+  theme_minimal()
+```
+
+Para todos los agregados sanitarios analizados se observa una asociación negativa entre el volumen económico anual (millones de euros) y la tasa media de mortalidad: en los años en los que el sector sanitario mueve más recursos, la mortalidad media es menor. Sin embargo, no se puede obtener una conclusión clara, ya que este aumento también puede explicarse por una tendencia temporal común, por lo que no puede interpretarse directamente como una relación causal.
+
+
