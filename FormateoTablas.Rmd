@@ -1,0 +1,90 @@
+---
+title: "Tablas"
+output: pdf_document
+header-includes:
+  - \usepackage{float}
+  - \usepackage{booktabs}
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Formateo Tabla
+
+
+
+```{r librerias,echo=FALSE,include=FALSE}
+library(readxl)
+library(lubridate)
+library(tidyverse)
+library(writexl)
+library(readxl)
+library(dplyr)
+library(knitr)
+
+library(dplyr)
+library(tibble)
+```
+
+
+```{r tab2, echo=FALSE}
+    mortalidad_tidy <- read_excel("data/Mortalidad_tidy.xlsx", )
+    info_mortalidad_tidy <- sapply(mortalidad_tidy, class) %>%
+      tibble::enframe(name = "Variable", value = "Tipo de Dato")
+    
+    knitr::kable(
+      info_mortalidad_tidy,
+      format = "latex",
+      booktabs = TRUE,
+      caption = "Estructura de Dataset Mortalidad (Tidyverse)",
+      align = 'll'
+)
+
+```
+
+```{r tab3, echo=FALSE}
+    riqueza  <- read_excel("./data/riqueza_tidy.xlsx", )
+    info_mortalidad_tidy <- sapply(riqueza, class) %>%
+      tibble::enframe(name = "Variable", value = "Tipo de Dato")
+    
+    knitr::kable(
+      info_mortalidad_tidy,
+      format = "latex",
+      booktabs = TRUE,
+      caption = "Estructura de Dataset PIB en españa (Tidyverse)",
+      align = 'll'
+)
+
+```
+
+
+```{r tab4, echo=FALSE}
+   pib_comunidades_tidy<-read_excel("./data/riqueza_comunidades_tidy.xlsx", )
+    info_mortalidad_tidy <- sapply(pib_comunidades_tidy, class) %>%
+      tibble::enframe(name = "Variable", value = "Tipo de Dato")
+    
+    knitr::kable(
+      info_mortalidad_tidy,
+      format = "latex",
+      booktabs = TRUE,
+      caption = "Estructura de Dataset PIB en Provincias (Tidyverse)",
+      align = 'll'
+)
+
+```
+```{r tab5, echo=FALSE}
+  renta_comunidades_tidy<-read_excel("./data/Renta_media_mediana_tidy.xlsx", )
+    info_mortalidad_tidy <- sapply(renta_comunidades_tidy, class) %>%
+      tibble::enframe(name = "Variable", value = "Tipo de Dato")
+    
+    knitr::kable(
+      info_mortalidad_tidy,
+      format = "latex",
+      booktabs = TRUE,
+      caption = "Estructura de Dataset PIB en Provincias (Tidyverse)",
+      align = 'll'
+)
+
+```
+
