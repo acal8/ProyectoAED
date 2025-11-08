@@ -13,7 +13,8 @@ author:
 affiliation:
   - num: 1
     address: |
-      Universitat de Valencia - Escuela Técnica Superior de Ingeniería (ETSE),         Avinguda de l'Universitat, S/N, 46100 Burjassot, Valencia
+      Universitat de Valencia - Escuela Técnica Superior de Ingeniería (ETSE),
+      Avinguda de l'Universitat, S/N, 46100 Burjassot, Valencia
   - num: 2
     address: |
       Correo electrónico: acal8@alumni.uv.es
@@ -82,8 +83,27 @@ output:
 ---
 
 ```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F}
+# CONFIGURACIÓN GENERAL
+library(knitr)
+options(width = 76)
+# Opciones generales chunks
+opts_chunk$set(echo = T, message = F, error = F, warning = F,
+               comment = NA, fig.align = 'center', dpi = 100, tidy = F,
+               cache.path = '.cache/', fig.path = './figure/')
+# options(xtable.type = 'html')
+knit_hooks$set(inline = function(x) {
+  if(is.numeric(x)) {
+    round(x, getOption('digits'))
+  } else {
+    paste(as.character(x), collapse = ', ')
+  }
+})
+```
+
+
+```{r librerías, cache = F, echo = F, message = F, warning = F, tidy = F}
 library(pacman)
-packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr", "writexl", "xlsx")
+packages <- c("tidyverse", "knitr", "ggplot2", "dplyr", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr", "writexl", "xlsx")
 pacman::p_load(char=packages)
 ```
 
@@ -140,18 +160,18 @@ df_renta_CCAA <- read_delim("../data/Renta_media_mediana_CCAA.csv",
         grouping_mark = "."), trim_ws = TRUE)
 ```
 
-Investiguemos este nuevo dataset. Veamos en primer lugar su estructura con la función ``str()``.
+Investiguemos este nuevo dataset. Veamos en primer lugar su estructura utilizando la función ``glimpse()`` (en lugar de ``str()``, para obtener una salida adecuada por pantalla).
 
 ```{r, echo = FALSE}
-str(df_renta_CCAA)
+glimpse(df_renta_CCAA)
 ```
 
 Veamos los valores únicos de cada variable.
 
 ```{r, echo = FALSE}
-unique(df_renta_CCAA['Renta media y mediana'])
-unique(df_renta_CCAA['Comunidad autónoma'])
-unique(df_renta_CCAA['Periodo'])
+unique(df_renta_CCAA['Renta media y mediana']) %>% kable(caption = "Renta media y mediana")
+unique(df_renta_CCAA['Comunidad autónoma']) %>% kable(caption = "Comunidad autónoma")
+unique(df_renta_CCAA['Periodo']) %>% kable(caption = "Periodo")
 ```
 
 Observamos que la columna ``Renta media y mediana`` tan solo tomas dos valores, pero la hemos importado como vector de caracteres. Deberíamos transformarla a factor.
