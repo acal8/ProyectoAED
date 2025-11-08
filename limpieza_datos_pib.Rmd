@@ -367,6 +367,7 @@ unique(pib_comunidades_tidy$`Tasas de variación interanuales`)
 #Fichero Tidy
 library(openxlsx)
 write.xlsx(riqueza_var, file = "./data/riqueza_comunidades_tidy.xlsx", rowNames = FALSE)
+#Cambio prueba
 ```
 
 
