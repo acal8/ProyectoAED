@@ -279,6 +279,13 @@ num_na_CCAA <- sum(is.na(df_renta_CCAA))
 cat("El número de valores NA en el data frame es", paste0(num_na_CCAA, "."))
 ```
 
+Realicemos un gráfico exploratorio de los datos con los que estamos trabajando. Lo haremos para el total nacional.
+
+```{r, fig.width=8, fig.height=5}
+df_renta_CCAA %>% filter(`Comunidad autónoma` == "Total Nacional") %>% ggplot(aes(x = Periodo, y = Total, color = `Renta media y mediana`)) + geom_point() + geom_line()
+```
+
+
 Por tanto, en este caso no tenemos datos faltantes.
 
 ```{r}
