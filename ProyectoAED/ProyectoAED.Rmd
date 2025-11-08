@@ -55,10 +55,11 @@ keywords: |
 funding: |
   This research received no external funding.
 dataavailability: |
-  Todos los conjuntos de datos han sido obtenidos de la página del Instituto Nacional de Estadística (INE)
-  (\url{https://www.ine.es/}). Son los siguientes:
-  \url[Indicadores de renta media y mediana]{https://www.ine.es/jaxiT3/Tabla.htm?t=53689}
-  \url[Renta media y mediana por comunidad autónoma]{https://www.ine.es/jaxiT3/Tabla.htm?t=68338}
+  Todos los conjuntos de datos han sido obtenidos de la página del Instituto Nacional de Estadística (INE) (\url{https://www.ine.es/}). Son los siguientes:
+  
+  [Indicadores de renta media y mediana](https://www.ine.es/jaxiT3/Tabla.htm?t=53689)
+  
+  [Renta media y mediana por comunidad autónoma](https://www.ine.es/jaxiT3/Tabla.htm?t=68338)
 conflictsofinterest: |
   The authors declare no conflict of interest. The founding sponsors had no role in the design of the study; 
   in the collection, analyses, or interpretation of data; in the writing of the 
