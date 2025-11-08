@@ -2,32 +2,42 @@
 title: Tasa de mortalidad en España por comunidades autónomas
 author:
   - name: Adrián Carrasco Alcalá
-    affil: 1, \ddagger
+    affil: 1, 2, \dagger
     email: acal8@alumni.uv.es
   - name: Álvaro Nieva Valenzuela
-    affil: 1, \ddagger
+    affil: 1, 3, \dagger
     email: alnieva@alumni.uv.es
   - name: Carlos David Llano Chicaiza
-    affil: 1, \ddagger
+    affil: 1, 4, \dagger
     email: cardalla@alumni.uv.es
 affiliation:
   - num: 1
     address: |
-      Universitat de Valencia - Escuela Técnica Superior de Ingeniería (ETSE)
-      Avinguda de l'Universitat, S/N, 46100 Burjassot, Valencia
+      Universitat de Valencia - Escuela Técnica Superior de Ingeniería (ETSE),         Avinguda de l'Universitat, S/N, 46100 Burjassot, Valencia
+  - num: 2
+    address: |
+      Correo electrónico: acal8@alumni.uv.es
+  - num: 3
+    address: |
+      Correo electrónico: alnieva@alumni.uv.es
+  - num: 4
+    address: |
+      Correo electrónico: cardalla@alumni.uv.es
 # author citation list in chicago format
 authorcitation: |
   Carrasco, A.; Nieva, A.; Llano C. D.
 # firstnote to eighthnote
 firstnote: |
   Estos autores contribuyeron por igual a este trabajo.
+correspondence: |
+  acal8@alumni.uv.es.
 # document options
 journal: data
 type: article
 status: submit
 # front matter
 simplesummary: |
-  A Simple summary goes here.
+  Análisis de la tasa de mortalidad en España por comunidades autónomas y su relación con la esperanza de vida, la inversión en sanidad y la renta media por unidad de consumo.
 abstract: |
   A single paragraph of about 200 words maximum. For research articles, 
   abstracts should give a pertinent overview of the work. We strongly encourage
