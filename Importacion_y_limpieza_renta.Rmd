@@ -177,10 +177,48 @@ filas_na[c("Provincias", "Indicadores de renta media", "Periodo")]
 
 Es decir, que nos faltan datos de todos los indicadores de renta media para Navarra desde 2015 a 2020, para Álava de 2015 a 2019 y para Gipuzkoa de 2015.
 
+Es importante tener estos datos faltantes localizados a la hora de calcular estadísticos o hacer gráficos explicativos.
 
+La proporción de datos faltantes en las provincias de Navarra y Álava es demasiado grande como para tratar de hacer una imputación (nos estaríamos inventando los datos). Sin embargo, vamos a investigar qué ocurre para los datos del año 2015 correspondientes a la provincia de Gipuzkoa.
+
+Para ello, comenzaremos haciendo algunos gráficos exploratorios. Visualicemos cada uno de los indicadores de renta media en la provincia de Gipuzkoa para los años disponibles (2016-2023)
+
+```{r, fig.width=8, fig.height=5}
+df_renta_gipuz <- df_renta_red %>% filter(Provincias == "Gipuzkoa")
+
+P <- ggplot(df_renta_gipuz, aes(x = Periodo, y = Total, color = `Indicadores de renta media`)) + geom_point() + geom_line()
+
+P
+```
+
+Observamos una cierta tendencia lineal en los datos en los primeros años (de 2016 a 2019). Podemos pensar en plantear una extrapolación lineal con un modelo de regresión lineal que nos permita predecir el valor para cada uno de los indicadores en 2015.
+
+No obstante, visualicemos antes de ello estos mismos valores de los indicadores de renta media en el resto de provincias en las que disponemos de los datos completos.
+
+```{r, fig.width=8, fig.height=5}
+P2 <- df_renta_red %>% group_by(Provincias) %>% ggplot(aes(x = Periodo, y = Total, color = `Indicadores de renta media`)) + geom_point(aes(class = Provincias))
+
+P2
+```
+
+```{r, fig.width=8, fig.height=5}
+grafic_prov <- function(prov){
+  df_renta_red %>% filter(Provincias == prov) %>% ggplot(aes(x = Periodo, y = Total, color = `Indicadores de renta media`)) + geom_point() + geom_line() + ggtitle(prov)
+}
+
+lapply(unique(df_renta_red[['Provincias']]), grafic_prov)
+
+# for (prov in unique(df_renta_red[['Provincias']])){
+#   df_renta_red[df_renta_red[['Provincias']] == prov,] %>% ggplot(aes(x = Periodo, y = Total, color = `Indicadores de renta media`)) + geom_point()
+# }
+```
+
+Observamos que en todas las gráficas los valores para los diferentes indicadores y las líneas que los unen en las gráficas siguen un mismo orden y no se entrecruzan. Estudiemos la media y la desviación típica de los valores de cada indicador para todas las provincias con datos disponibles en el año 2015 (todas excepto Navarra, Álava y Gipuzkoa)
 
 ```{r}
-# media_provincias <- mean 
+df_renta_2015 <- df_renta_red %>% filter(Periodo == "2015-01-01", !Provincias %in% c("Navarra", "Araba/Álava", "Gipuzkoa")) %>% group_by(`Indicadores de renta media`) %>% summarise(Media = mean(Total), Desviación_Típica = sd(Total))
+
+df_renta_2015
 ```
 
 
