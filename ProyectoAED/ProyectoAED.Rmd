@@ -88,7 +88,7 @@ library(knitr)
 options(width = 76)
 # Opciones generales chunks
 opts_chunk$set(echo = T, message = F, error = F, warning = F,
-               comment = NA, fig.align = 'center', dpi = 100, tidy = F,
+               comment = NA, tidy = F,
                cache.path = '.cache/', fig.path = './figure/')
 # options(xtable.type = 'html')
 knit_hooks$set(inline = function(x) {
