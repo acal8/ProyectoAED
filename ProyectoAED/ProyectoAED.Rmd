@@ -2,22 +2,19 @@
 title: Tasa de mortalidad en España por comunidades autónomas
 author:
   - name: Adrián Carrasco Alcalá
-    affil: 1, 2, \ddagger
+    affil: 1, \ddagger
+    email: acal8@alumni.uv.es
   - name: Álvaro Nieva Valenzuela
-    affil: 1, 3, \ddagger
+    affil: 1, \ddagger
+    email: alnieva@alumni.uv.es
   - name: Carlos David Llano Chicaiza
-    affil: 1, 4, \ddagger
+    affil: 1, \ddagger
+    email: cardalla@alumni.uv.es
 affiliation:
   - num: 1
     address: |
       Universitat de Valencia - Escuela Técnica Superior de Ingeniería (ETSE)
-      Dirección: Avinguda de l'Universitat, S/N, 46100 Burjassot, Valencia
-  - num: 2
-    email: acal8@alumni.uv.es
-  - num: 3
-    email: alnieva@alumni.uv.es
-  - num: 4
-    email: cardalla@alumni.uv.es
+      Avinguda de l'Universitat, S/N, 46100 Burjassot, Valencia
 # author citation list in chicago format
 authorcitation: |
   Carrasco, A.; Nieva, A.; Llano C. D.
@@ -73,7 +70,14 @@ output:
     extra_dependencies: longtable
 ---
 
-# Introducción
+```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F}
+library(pacman)
+packages <- c("tidyverse", "knitr", "ggplot2", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr", "writexl", "xlsx")
+pacman::p_load(char=packages)
+```
+
+
+# Introducción y planteamiento inicial
 
 The introduction should briefly place the study in a broad context and highlight
 why it is important. It should define the purpose of the work and its
@@ -114,6 +118,92 @@ ethical approval must list the authority that provided approval and the
 corresponding ethical approval code.
 
 # Resultados
+
+## Importación y acondicionamiento de los datos
+
+Existe un dataset de renta media y mediana por comunidades autónomas, con datos desde 2008 a 2024
+
+```{r, echo = FALSE}
+df_renta_CCAA <- read_delim("../data/Renta_media_mediana_CCAA.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ",", 
+        grouping_mark = "."), trim_ws = TRUE)
+```
+
+Investiguemos este nuevo dataset. Veamos en primer lugar su estructura con la función ``str()``.
+
+```{r, echo = FALSE}
+str(df_renta_CCAA)
+```
+
+Veamos los valores únicos de cada variable.
+
+```{r, echo = FALSE}
+unique(df_renta_CCAA['Renta media y mediana'])
+unique(df_renta_CCAA['Comunidad autónoma'])
+unique(df_renta_CCAA['Periodo'])
+```
+
+Observamos que la columna ``Renta media y mediana`` tan solo tomas dos valores, pero la hemos importado como vector de caracteres. Deberíamos transformarla a factor.
+
+```{r, echo = FALSE}
+df_renta_CCAA <- df_renta_CCAA %>% mutate(`Renta media y mediana` = as.factor(`Renta media y mediana`))
+```
+
+De igual forma, deberíamos pasar la columna ``Periodo`` a formato ``Date``.
+
+```{r, echo = FALSE}
+df_renta_CCAA$Periodo <- ymd(paste0(df_renta_CCAA$Periodo, "-01-01"))
+```
+
+Veamos, por tanto, cómo nos ha quedado el data set tidy
+
+```{r, echo = FALSE}
+str(df_renta_CCAA)
+```
+
+
+## Detección de datos faltantes e imputación
+
+```{r, echo = FALSE}
+num_na_CCAA <- sum(is.na(df_renta_CCAA))
+
+cat("El número de valores NA en el data frame es", paste0(num_na_CCAA, "."))
+```
+
+Utilizando la función ``is.na()`` comprobamos que no tenemos datos faltantes en este dataset.
+
+## Gráficos exploratorios
+
+Realicemos un gráfico exploratorio de los datos con los que estamos trabajando. Lo haremos para el total nacional.
+
+```{r fig_renta, echo = FALSE, fig.width = 8, fig.height = 5, fig.cap = "Renta media y mediana para el Total Nacional en el periodo 2008-2024.\\label{fig:fig_renta}"}
+df_renta_CCAA %>% filter(`Comunidad autónoma` == "Total Nacional") %>% ggplot(aes(x = Periodo, y = Total, color = `Renta media y mediana`)) + geom_point() + geom_line()
+```
+
+## Detección outliers e inliers
+
+**Regla 3 sigma**
+
+**Indentificador de Hampel**
+
+**Regla boxplot**
+
+## Análisis de las variables (univariante/bivariante)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
 
 This section may be divided by subheadings. It should provide a concise and
 precise description of the experimental results, their interpretation as well
@@ -240,9 +330,11 @@ clear which theorem is being referred to.
 
 The text continues here.
 
-# Conclusiones
+# Conclusiones finales
 
 Authors should discuss the results and how they can be interpreted in 
 perspective of previous studies and of the working hypotheses. The findings and 
 their implications should be discussed in the broadest context possible. Future 
 research directions may also be highlighted.
+
+Comentario recuperación tras el covid a pesar de la preocupación por las vacunas.
