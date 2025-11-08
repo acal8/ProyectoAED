@@ -55,10 +55,7 @@ dataavailability: |
 conflictsofinterest: |
   The authors declare no conflict of interest. The founding sponsors had no role in the design of the study; 
   in the collection, analyses, or interpretation of data; in the writing of the 
-  manuscript, an in the decision to publish the results.
-supplementary: |
- The following supporting information can be downloaded at:  
- \linksupplementary{s1}, Figure S1: title; Table S1: title; Video S1: title.
+  manuscript, an in the decision to publish the results
 abbreviations:
   - short: MDPI
     long: Multidisciplinary Digital Publishing Institute
@@ -76,7 +73,7 @@ output:
     extra_dependencies: longtable
 ---
 
-# Introduction
+# Introducción
 
 The introduction should briefly place the study in a broad context and highlight
 why it is important. It should define the purpose of the work and its
@@ -95,7 +92,7 @@ To use endnotes, change `endnotes: true` in the YAML header, then use
 `\endnote{This is an endnote.}`.
 
 
-# Materials and Methods
+# Materiales y Métodos
 
 Materials and Methods should be described with sufficient details to allow 
 others to replicate and build on published results. Please note that publication 
@@ -116,7 +113,7 @@ Interventionary studies involving animals or humans, and other studies require
 ethical approval must list the authority that provided approval and the
 corresponding ethical approval code.
 
-# Results
+# Resultados
 
 This section may be divided by subheadings. It should provide a concise and
 precise description of the experimental results, their interpretation as well
@@ -243,19 +240,9 @@ clear which theorem is being referred to.
 
 The text continues here.
 
-# Discussion
+# Conclusiones
 
 Authors should discuss the results and how they can be interpreted in 
 perspective of previous studies and of the working hypotheses. The findings and 
 their implications should be discussed in the broadest context possible. Future 
 research directions may also be highlighted.
-
-# Conclusion
-
-This section is not mandatory, but can be added to the manuscript if the
-discussion is unusually long or complex.
-
-# Patents
-
-This section is not mandatory, but may be added if there are patents resulting
-from the work reported in this manuscript.
