@@ -1,0 +1,95 @@
+---
+title: "limpio"
+author: "Adrián Carrasco Alcalá"
+date: "2025-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dataset renta media y mediana por comunidades autónomas
+
+Este conjunto de datos mide en euros la renta media y mediana por unidad de consumo de la que disponen los hogares para las diferentes comunidades y ciudades autónomas de España y desde el año 2008 hasta el año 2024. Este indicador ajusta la renta del hogar según su tamaño y composición, lo que permite hacer comparaciones del bienestar económico entre comunidades autónomas así como también estudiar su distribución a lo largo del territorio español y su evolución con los años.
+
+## Importación y acondicionamiento de los datos
+
+```{r, echo = FALSE}
+df_renta_CCAA <- read_delim("../data/Renta_media_mediana_CCAA.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ",", 
+        grouping_mark = "."), trim_ws = TRUE)
+```
+
+Investiguemos este nuevo dataset. Veamos en primer lugar su estructura utilizando la función ``glimpse()``.
+
+```{r, echo = FALSE}
+glimpse(df_renta_CCAA)
+```
+
+Por tanto, tenemos `r dim(df_renta_CCAA)[1]` registros sobre `r dim(df_renta_CCAA)[2]` variables diferentes. Utilizando la función ``unique()`` para encontrar los valores únicos de cada variable, obtenemos la siguiente descripción de las mismas.
+
+```{r, echo = FALSE, include = FALSE}
+unique(df_renta_CCAA['Renta media y mediana']) %>% kable(caption = "Renta media y mediana")
+unique(df_renta_CCAA['Comunidad autónoma']) %>% kable(caption = "Comunidad autónoma")
+unique(df_renta_CCAA['Periodo']) %>% kable(caption = "Periodo")
+```
+
+
+```{r, echo = FALSE}
+tribble(~ Variable, ~ Descripción, "Renta media y mediana", "Indica si el dato corresponde a la renta media o la renta mediana por unidad de consumo.", "Comunidad autónoma", "Comunidad o ciudad autónoma a la que pertenece el dato (incluye el Total Nacional).", "Periodo", "Año al que corresponde el dato (de 2008 a 2024).", "Total", "Valor total de la renta media y mediana en euros por unidad de consumo.") %>% kable(caption = "Descripción de las variables")
+```
+
+Además, observamos que la columna ``Renta media y mediana`` tan solo tomas dos valores, pero la hemos importado como vector de caracteres. Deberíamos transformarla a factor para ahorra espacio en memoria. De igual forma, deberíamos pasar la columna ``Periodo`` a formato ``Date``.
+
+```{r, echo = FALSE}
+df_renta_CCAA <- df_renta_CCAA %>% mutate(`Renta media y mediana` = as.factor(`Renta media y mediana`))
+
+df_renta_CCAA$Periodo <- ymd(paste0(df_renta_CCAA$Periodo, "-01-01"))
+```
+
+Tras realizar estos cambios, utilizando de nuevo la función ``glimpse()``, vemos que el dataset tidy nos queda de la siguiente manera, con cada variable transformada a su tipo correspondiente.
+
+```{r, echo = FALSE}
+glimpse(df_renta_CCAA)
+```
+
+
+## Detección de datos faltantes e imputación
+
+```{r, echo = FALSE, include = FALSE}
+num_na_CCAA <- sum(is.na(df_renta_CCAA))
+
+cat("El número de valores NA en el data frame es", paste0(num_na_CCAA, "."))
+```
+
+Utilizando la función ``is.na()`` para detectar los valores faltantes a lo largo del dataset y la función ``sum()`` para contarlos, comprobamos que tenemos `r sum(is.na(df_renta_CCAA))` datos faltantes en este dataset.
+
+## Gráficos exploratorios
+
+Realicemos un gráfico exploratorio de los datos con los que estamos trabajando. Lo haremos para el total nacional.
+
+```{r fig_renta, echo = FALSE, fig.width = 8, fig.height = 5, fig.align='center', out.width='0.8\\textwidth', fig.cap = "Renta media y mediana para el Total Nacional en el periodo 2008-2024.\\label{fig:fig_renta}"}
+
+df_renta_CCAA %>% filter(`Comunidad autónoma` == "Total Nacional") %>% ggplot(aes(x = Periodo, y = Total, color = `Renta media y mediana`)) + geom_point() + geom_line() + scale_x_date(date_breaks = "1 year", date_labels = "%Y") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + scale_y_continuous(breaks = c(12500, 15000, 17500, 20000, 22500), limits = c(12500, 22500))
+```
+
+Observamos una clara tendencia creciente en los últimos años, con dos descensos señalados: uno durante la crisis económica española de los años 2008 a 2014 y otro tras la pandemia de covid-19.
+
+La subida a partir de 2021 es probablemente debida al crecimiento del empleo, la subida del Salario Mínimo Interprofesional y el incremento general de los salarios y revalorización de las pensiones. No obstante, todos estos valores deben interpretarse teniendo en cuenta el contexto de inflación descontrolada que experimentó España en 2022.
+
+## Detección outliers
+
+Para abordar la detección de posibles outliers en nuestro conjunto de datos, utilizamos la regla del boxplot. Escogemos esta técnica ya que no es muy agresiva, y los datos de renta pueden variar bastante entre comunidades autónomas (debido, por ejemplo, al nivel de urbanización de las mismas).
+
+```{r fig_boxplot_CCAA, echo = FALSE, fig.width = 8, fig.height = 5, fig.align='center', out.width='0.8\\textwidth', fig.cap = "Boxplots renta media y mediana en las diferentes comunidades autónomas para cada año.\\label{fig:fig_boxplot_CCAA}"}
+
+df_renta_CCAA %>% filter(`Comunidad autónoma` != "Total Nacional") %>%  ggplot(aes(x = `Renta media y mediana`, y = Total, fill = `Renta media y mediana`)) +
+  geom_boxplot() +
+  facet_wrap(~ year(Periodo), ncol = 4) + labs(x = NULL, y = "Total (euros por unidad de consumo))", fill = "Indicador de renta") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+```
+
+Visualmente, no detectamos outliers en ningún año.
+
+## Análisis de las variables (univariante/bivariante)
