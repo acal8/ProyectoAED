@@ -1,0 +1,236 @@
+---
+title: "limpio"
+author: "Adrián Carrasco Alcalá"
+date: "2025-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dataset renta media y mediana por comunidades autónomas
+
+Este conjunto de datos mide en euros la renta media y mediana por unidad de consumo de la que disponen los hogares para las diferentes comunidades y ciudades autónomas de España y desde el año 2008 hasta el año 2024. Este indicador ajusta la renta del hogar según su tamaño y composición, lo que permite hacer comparaciones del bienestar económico entre comunidades autónomas así como también estudiar su distribución a lo largo del territorio español y su evolución con los años.
+
+## Importación y acondicionamiento de los datos
+
+```{r, echo = FALSE}
+df_renta_CCAA <- read_delim("../data/Renta_media_mediana_CCAA.csv", 
+    delim = ";", escape_double = FALSE, locale = locale(decimal_mark = ",", 
+        grouping_mark = "."), trim_ws = TRUE)
+```
+
+Investiguemos este nuevo dataset. Veamos en primer lugar su estructura utilizando la función ``glimpse()``.
+
+```{r, echo = FALSE}
+glimpse(df_renta_CCAA)
+```
+
+Por tanto, tenemos `r dim(df_renta_CCAA)[1]` registros sobre `r dim(df_renta_CCAA)[2]` variables diferentes. Utilizando la función ``unique()`` para encontrar los valores únicos de cada variable, obtenemos la siguiente descripción de las mismas.
+
+```{r, echo = FALSE, include = FALSE}
+unique(df_renta_CCAA['Renta media y mediana']) %>% kable(caption = "Renta media y mediana")
+unique(df_renta_CCAA['Comunidad autónoma']) %>% kable(caption = "Comunidad autónoma")
+unique(df_renta_CCAA['Periodo']) %>% kable(caption = "Periodo")
+```
+
+
+```{r, echo = FALSE}
+tribble(~ Variable, ~ Descripción, "Renta media y mediana", "Indica si el dato corresponde a la renta media o la renta mediana por unidad de consumo.", "Comunidad autónoma", "Comunidad o ciudad autónoma a la que pertenece el dato (incluye el Total Nacional).", "Periodo", "Año al que corresponde el dato (de 2008 a 2024).", "Total", "Valor total de la renta media y mediana en euros por unidad de consumo.") %>% kable(caption = "Descripción de las variables")
+```
+
+Además, observamos que la columna ``Renta media y mediana`` tan solo toma dos valores, pero la hemos importado como vector de caracteres. Deberíamos transformarla a factor para ahorra espacio en memoria. De igual forma, deberíamos pasar la columna ``Periodo`` a formato ``Date``.
+
+```{r, echo = FALSE}
+df_renta_CCAA <- df_renta_CCAA %>% mutate(`Renta media y mediana` = as.factor(`Renta media y mediana`))
+
+df_renta_CCAA$Periodo <- ymd(paste0(df_renta_CCAA$Periodo, "-01-01"))
+```
+
+Tras realizar estos cambios, utilizando de nuevo la función ``glimpse()``, vemos que el dataset tidy nos queda de la siguiente manera, con cada variable transformada a su tipo correspondiente.
+
+```{r, echo = FALSE}
+glimpse(df_renta_CCAA)
+```
+
+
+## Detección de datos faltantes e imputación
+
+```{r, echo = FALSE, include = FALSE}
+num_na_CCAA <- sum(is.na(df_renta_CCAA))
+
+cat("El número de valores NA en el data frame es", paste0(num_na_CCAA, "."))
+```
+
+Utilizando la función ``is.na()`` para detectar los valores faltantes a lo largo del dataset y la función ``sum()`` para contarlos, comprobamos que tenemos `r sum(is.na(df_renta_CCAA))` datos faltantes en este dataset.
+
+## Gráficos exploratorios
+
+Realicemos un gráfico exploratorio de los datos con los que estamos trabajando. Lo haremos para el total nacional.
+
+```{r fig_renta, echo = FALSE, fig.width = 8, fig.height = 5, fig.align='center', out.width='0.8\\textwidth', fig.cap = "Renta media y mediana para el Total Nacional en el periodo 2008-2024.\\label{fig:fig_renta}"}
+
+df_renta_CCAA %>% filter(`Comunidad autónoma` == "Total Nacional") %>% ggplot(aes(x = Periodo, y = Total, color = `Renta media y mediana`)) + geom_point() + geom_line() + scale_x_date(date_breaks = "1 year", date_labels = "%Y") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + scale_y_continuous(breaks = c(12500, 15000, 17500, 20000, 22500), limits = c(12500, 22500))
+```
+
+Observamos una clara tendencia creciente en los últimos años, con dos descensos señalados: uno durante la crisis económica española de los años 2008 a 2014 y otro tras la pandemia de covid-19.
+
+La subida a partir de 2021 es probablemente debida al crecimiento del empleo, la subida del Salario Mínimo Interprofesional y el incremento general de los salarios y revalorización de las pensiones. No obstante, todos estos valores deben interpretarse teniendo en cuenta el contexto de inflación descontrolada que experimentó España en 2022.
+
+## Detección outliers
+
+Para abordar la detección de posibles outliers en nuestro conjunto de datos, utilizamos la regla del boxplot. Escogemos esta técnica ya que no es muy agresiva, y los datos de renta pueden variar bastante entre comunidades autónomas (debido, por ejemplo, al nivel de urbanización de las mismas).
+
+```{r fig_boxplot_CCAA, echo = FALSE, fig.width = 8, fig.height = 5, fig.align='center', out.width='0.8\\textwidth', fig.cap = "Boxplots renta media y mediana en las diferentes comunidades autónomas para cada año.\\label{fig:fig_boxplot_CCAA}"}
+
+df_renta_CCAA %>% filter(`Comunidad autónoma` != "Total Nacional") %>%  ggplot(aes(x = `Renta media y mediana`, y = Total, fill = `Renta media y mediana`)) +
+  geom_boxplot() +
+  facet_wrap(~ year(Periodo), ncol = 4) + labs(x = NULL, y = "Total (euros por unidad de consumo))", fill = "Indicador de renta") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+```
+
+Visualmente, no detectamos outliers en ningún año, si no veríamos puntos fuera del rango que comprende la caja y los bigotes en alguna de las gráficas.
+
+## Análisis de las variables (univariante/bivariante)
+
+Comenzaremos calculando algunos estadístico descriptivos básicos para realizar el análisis univariante de nuestro conjunto de datos. Nos centraremos en los valores de la renta media y renta mediana para todas las comunidades autónomas (excluyendo el ``Total Nacional``) y para todos los años.
+
+```{r, echo = FALSE}
+df_renta_CCAA_sep <- df_renta_CCAA %>%
+  pivot_wider(names_from = `Renta media y mediana`, values_from = Total) %>%
+  rename(Renta_Media = `Renta media por unidad de consumo`, Renta_Mediana = `Renta mediana por unidad de consumo`) %>%
+  filter(`Comunidad autónoma` != "Total Nacional")
+
+summary(df_renta_CCAA_sep$Renta_Media)
+
+summary(df_renta_CCAA_sep$Renta_Mediana)
+```
+
+Realizando un análisis muy general observamos, como era de esperar, que los estadísticos calculados para valores de la renta media por unidad de consumo son siempre superiores a los correspondientes valores para la renta mediana. Es más, la media de la renta media y la media de la renta mediana son superiores a las medianas correspondientes
+
+Esto se debe a que la mediana es más resistente a valores más altos (rentas más altas) que la media, de forma que representa mejor a la población ubicada en el centro de la distribución de rentas.
+
+Los diagramas de cajas dibujados en el apartado anterior para la detección de outliers también nos permiten hacernos una idea, al menos visual, de la distribución de la renta media y mediana en todas las comunidades autónomas de España para cada año en el periodo de 2008 a 2024.
+
+Podemos realizar una visualización de la distribución de la renta media y mediana mediante los siguientes histogramas.
+
+```{r fig_histograma_renta_media_mediana, echo = FALSE, fig.width = 8, fig.height = 5, fig.align='center', out.width='0.8\\textwidth', fig.cap = "Histogramas de la distribución de la renta media y mediana para todas las comunidades autónomas. \\label{fig:fig_histograma_renta_media_mediana}"}
+P1 <- ggplot(df_renta_CCAA_sep, aes(x = Renta_Media)) +
+  geom_histogram(bins = 20, fill = "blue", alpha = 0.7, color = "black") +
+  labs(title = "Distribución de la renta media por unidad de consumo", x = "Renta Media (euros por unidad de consumo)", y = "Recuento")
+
+P2 <- ggplot(df_renta_CCAA_sep, aes(x = Renta_Mediana)) +
+  geom_histogram(bins = 20, fill = "red", alpha = 0.7, color = "black") +
+  labs(title = "Distribución de la renta mediana por unidad de consumo", x = "Renta Mediana (euros por unidad de consumo)", y = "Recuento")
+
+P1
+P2
+```
+
+### ¿Existe relación entre la tasa de mortalidad y la renta media y mediana por unidad de consumo?
+
+Para tratar de responder a esta pregunta, realizamos un ``inner_join()`` entre los datasets de renta media y mediana por unidad de consumo y tasa de mortalidad, quedándonos únicamente con los registros que coinciden en ``Comunidad Autónoma`` y ``Periodo`` para ambos.
+
+```{r, echo = FALSE}
+renta_df <- df_renta_CCAA_sep %>%
+  rename(Comunidad = `Comunidad autónoma`) %>%
+  mutate(Ano = year(Periodo)) %>%
+  mutate(Comunidad = str_replace(Comunidad, "^\\d+\\s", "")) %>%
+  filter(Comunidad != "Total Nacional")
+
+
+mortalidad_df <- Mortalidad_tidy %>%
+  mutate(Ano = year(Año)) %>%
+  group_by(Comunidad, Ano) %>%
+  summarize(Tasa_Mortalidad_Media = mean(Tasa_mortalidad, na.rm = TRUE), .groups = "drop")
+
+df_entero <- inner_join(renta_df, mortalidad_df, by = c("Comunidad", "Ano"))
+```
+
+Para analizar la posible relación existente entre las variables de renta media y mediana y la tasa de mortalidad por comunidades autónomas, promediamos en primer lugar los datos a lo largo de todos los años disponibles.
+
+```{r, echo = FALSE}
+df_bivariante <- df_entero %>%
+  group_by(Comunidad) %>%
+  summarize(Renta_Media_Total = mean(Renta_Media, na.rm = TRUE), Renta_Mediana_Total = mean(Renta_Mediana, na.rm = TRUE),  Tasa_Mortalidad_Total = mean(Tasa_Mortalidad_Media, na.rm = TRUE)
+  )
+```
+
+Podemos visualizar la relación estudiada con los siguientes gráficos de dispersión.
+
+```{r fig_relacion_renta_media_mortalidad, echo = FALSE, fig.width = 8, fig.height = 5, fig.align='center', out.width='0.8\\textwidth', fig.cap = "Diagrama de dispersión de la renta media y tasa de mortalidad para cada comunidad autónoma. \\label{fig:fig_relacion_renta_media_mortalidad}"}
+df_bivariante %>% mutate(Comunidad = recode(Comunidad,
+    "Madrid, Comunidad de" = "Madrid",
+    "Navarra, Comunidad Foral de" = "Navarra",
+    "Rioja, La" = "La Rioja",
+    "Valenciana, Comunitat" = "Comunidad Valenciana",
+    "Balears, Illes" = "Islas Baleares",
+    "Murcia, Región de" = "Murcia",
+    "Aragón" = "Aragón",
+    "Canarias" = "Canarias",
+    "Andalucía" = "Andalucía",
+    "Castilla y León" = "Castilla y León",
+    "Castilla - La Mancha" = "Castilla - La Mancha",
+    "País Vasco" = "País Vasco",
+    "Cataluña" = "Cataluña",
+    "Extremadura" = "Extremadura",
+    "Galicia" = "Galicia",
+    "Cantabria" = "Cantabria",
+    "Asturias, Principado de" = "Asturias",
+    "Ceuta" = "Ceuta",
+    "Melilla" = "Melilla"
+  )) %>% 
+ggplot(aes(x = Renta_Media_Total, y = Tasa_Mortalidad_Total)) +
+  geom_point(aes(color = Comunidad), size = 3, show.legend = FALSE) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  geom_text_repel(aes(label = Comunidad)) +
+  labs(title = "Relación entre Renta Media y Tasa de Mortalidad por Comunidad Autónoma", x = "Renta Media Promedio (euros por unidad de consumo)", y = "Tasa de Mortalidad Promedio") +
+  theme_minimal()
+```
+
+```{r fig_relacion_renta_mediana_mortalidad, echo = FALSE, fig.width = 8, fig.height = 5, fig.align='center', out.width='0.8\\textwidth', fig.cap = "Diagrama de dispersión de la renta mediana y tasa de mortalidad para cada comunidad autónoma. \\label{fig:fig_relacion_renta_mediana_mortalidad}"}
+df_bivariante %>% mutate(Comunidad = recode(Comunidad,
+    "Madrid, Comunidad de" = "Madrid",
+    "Navarra, Comunidad Foral de" = "Navarra",
+    "Rioja, La" = "La Rioja",
+    "Valenciana, Comunitat" = "Comunidad Valenciana",
+    "Balears, Illes" = "Islas Baleares",
+    "Murcia, Región de" = "Murcia",
+    "Aragón" = "Aragón",
+    "Canarias" = "Canarias",
+    "Andalucía" = "Andalucía",
+    "Castilla y León" = "Castilla y León",
+    "Castilla - La Mancha" = "Castilla - La Mancha",
+    "País Vasco" = "País Vasco",
+    "Cataluña" = "Cataluña",
+    "Extremadura" = "Extremadura",
+    "Galicia" = "Galicia",
+    "Cantabria" = "Cantabria",
+    "Asturias, Principado de" = "Asturias",
+    "Ceuta" = "Ceuta",
+    "Melilla" = "Melilla"
+  )) %>% 
+ggplot(aes(x = Renta_Mediana_Total, y = Tasa_Mortalidad_Total)) +
+  geom_point(aes(color = Comunidad), size = 3, show.legend = FALSE) +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  geom_text_repel(aes(label = Comunidad)) +
+  labs(title = "Relación entre Renta Mediana y Tasa de Mortalidad por Comunidad Autónoma", x = "Renta Mediana Promedio (euros por unidad de consumo)", y = "Tasa de Mortalidad Promedio") +
+  theme_minimal()
+```
+
+Visualmente, percibimos una ausencia de correlación entre la renta media y mediana promedio y la tasa de mortalidad por comunidades autónomas. No obstante, para verificar estas intuiciones matemáticamente, haremos un test de correlación estimando el coeficiente de correlación de Pearson y el de Spearman.
+
+```{r, echo = FALSE}
+cor_media_pearson <- cor.test(df_bivariante$Renta_Media_Total, df_bivariante$Tasa_Mortalidad_Total, alternative = "two.sided", method = "pearson")
+
+cor_media_spearman <- cor.test(df_bivariante$Renta_Media_Total, df_bivariante$Tasa_Mortalidad_Total, alternative = "two.sided", method = "spearman")
+
+cor_mediana_pearson <- cor.test(df_bivariante$Renta_Mediana_Total, df_bivariante$Tasa_Mortalidad_Total, alternative = "two.sided", method = "pearson")
+
+cor_mediana_spearman <- cor.test(df_bivariante$Renta_Mediana_Total, df_bivariante$Tasa_Mortalidad_Total, alternative = "two.sided", method = "spearman")
+```
+
+Obtenemos para la renta media un coeficiente de correlación de Pearson de `r cor_media_pearson$estimate` y una correlación de Spearman de `r cor_media_spearman$estimate`. Por otra parte, para la renta mediana, el coeficiente de Pearson es de `r cor_mediana_pearson$estimate` y el Spearman de `r cor_mediana_spearman$estimate`.
+
+Por tanto, los resultados muestran una ausencia de correlación lineal (Pearson) entre la renta (tanto media y mediana) y la tasa de mortalidad. Sin embargo, la correlación de Spearman muestra una cierta relación negativa débil, siendo $\rho$ = -0.356 para la renta media y $\rho$ = -0.272 para la renta mediana. Ahora bien, al revisar los p-valores (`r cor_media_spearman$p.value` y `r cor_mediana_spearman$p.value`, respectivamente) verificamos que estos coeficientes no son estadísticamente signativos.

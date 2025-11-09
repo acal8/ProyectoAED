@@ -1,0 +1,59 @@
+---
+title: "Gráfica_esperanza_vida_media"
+author: "Adrián Carrasco Alcalá"
+date: "2025-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, fig.width = 8, fig.height = 5}
+Mortalidad_tidy %>%
+  filter(Año == as.Date("2023-01-01"), Rango_Edad == "0 años") %>%
+  group_by(Comunidad) %>%
+  summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
+  mutate(Comunidad = recode(Comunidad,
+    "Madrid, Comunidad de" = "Comunidad de Madrid",
+    "Navarra, Comunidad Foral de" = "Comunidad Foral de Navarra",
+    "Rioja, La" = "La Rioja",
+    "Valenciana, Comunitat" = "Comunidad Valenciana",
+    "Balears, Illes" = "Islas Baleares",
+    "Murcia, Región de" = "Región de Murcia",
+    "Aragón" = "Aragón",
+    "Canarias" = "Canarias",
+    "Andalucía" = "Andalucía",
+    "Castilla y León" = "Castilla y León",
+    "Castilla - La Mancha" = "Castilla - La Mancha",
+    "País Vasco" = "País Vasco",
+    "Cataluña" = "Cataluña",
+    "Extremadura" = "Extremadura",
+    "Galicia" = "Galicia",
+    "Cantabria" = "Cantabria",
+    "Asturias, Principado de" = "Principado de Asturias",
+    "Ceuta" = "Ceuta",
+    "Melilla" = "Melilla"
+  )) %>%
+  mutate(Comunidad = reorder(Comunidad, Media_vida)) %>%
+  ggplot(aes(x = Media_vida, y = Comunidad, fill = Comunidad)) +
+  geom_col() +
+  # geom_text(aes(label = Comunidad), hjust = 1.05, color = "black", size = 4)
+  geom_text(aes(label = paste0(Comunidad, " (", round(Media_vida, 1), ")")), hjust = 1.05, color = "black", size = 4) +
+  labs(
+    title = "Esperanza de vida media por Comunidad Autónoma — 2023",
+    subtitle = "Datos de Mortalidad_tidy para 0 años",
+    x = "Esperanza de vida (años)",
+    y = "Comunidad Autónoma"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "none",
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  coord_cartesian(xlim = c(80.5, 85))
+
+```
+

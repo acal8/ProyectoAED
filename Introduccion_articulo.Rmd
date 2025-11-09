@@ -1,0 +1,24 @@
+---
+title: "Introducción artículo"
+author: "Adrián Carrasco Alcalá"
+date: "2025-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción y planteamiento inicial
+
+El objetivo de este proyecto es realizar un análisis exploratorio de datos utilizando conjuntos de datos del Instituto Nacional de Estadística (INE) sobre tasa de mortalidad, renta media y mediana por unidad de consumo e inversión en sanidad, con el propósito de encontrar patrones de asociación y evaluar si existen correlaciones entre estos indicadores socioeconómicos y de salud pública y la tasa de mortalidad en las diferentes comunidades autónomas de España. 
+
+Para ello, efectuaremos una importación y limpieza o acondicionamiento de los datos, estudiaremos la presencia de datos faltantes y su posible imputación, visualizaremos gráficos exploratorios de los datos, detectaremos posibles outliers y finalemente realizaremos un análisis univariante y bivariante de las variables de cada uno de los conjuntos de datos. Con todo esto, trataremos de responder a las siguientes preguntas: 
+
+¿Cuál es la esperanza de vida media en España en el último año disponible? ¿Qué Comunidad Autónoma es la que más tiene, y la que menos?
+
+¿Cuál es la evolución de la esperanza de vida en el tiempo?
+
+¿Existe relación entre la tasa de mortalidad y la renta media y mediana por unidad de consumo?
+
+¿Existe relación entre la tasa de mortalidad y la inversión en sanida en cada comunidad autónoma?
