@@ -704,28 +704,28 @@ A continuación se muestran las gráficas que representan la mediana de cada var
 
 
 ```{r}
-# library(dplyr)
-# library(GGally)
-# 
-# df_medias <- Mortalidad_tidy %>%
-#   group_by(Rango_Edad) %>%
-#   summarise(
-#     Tasa_mortalidad   = mean(Tasa_mortalidad, na.rm = TRUE),
-#     Esperanza_de_vida = mean(Esperanza_de_vida, na.rm = TRUE)
-#     # aquí podrías meter más vars si quieres
-#   ) %>%
-#   ungroup() %>%
-#   mutate(Rango_Edad = factor(Rango_Edad, levels = niveles))
-# 
-# ggplot(df_medias, aes(x = Tasa_mortalidad, y = Esperanza_de_vida)) +
-#   geom_point() +
-#   geom_smooth(method = "lm", se = FALSE, colour = "red") +
-#   labs(
-#     x = "Tasa de mortalidad (Tanto por miles)",
-#     y = "Esperanza de vida",
-#     title = "Relación entre mortalidad y esperanza de vida"
-#   ) +
-#   theme_minimal()
+library(dplyr)
+library(GGally)
+
+df_medias <- Mortalidad_tidy %>%
+  group_by(Rango_Edad) %>%
+  summarise(
+    Tasa_mortalidad   = mean(Tasa_mortalidad, na.rm = TRUE),
+    Esperanza_de_vida = mean(Esperanza_de_vida, na.rm = TRUE)
+    # aquí podrías meter más vars si quieres
+  ) %>%
+  ungroup() %>%
+  mutate(Rango_Edad = factor(Rango_Edad, levels = niveles))
+
+ggplot(df_medias, aes(x = Tasa_mortalidad, y = Esperanza_de_vida)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, colour = "red") +
+  labs(
+    x = "Tasa de mortalidad (Tanto por miles)",
+    y = "Esperanza de vida",
+    title = "Relación entre mortalidad y esperanza de vida"
+  ) +
+  theme_minimal()
 ```
 
 La gráfica muestra una relación inversa muy clara entre la tasa de mortalidad y la esperanza de vida: a medida que aumenta la mortalidad media de un grupo de edad, la esperanza de vida asociada a ese grupo disminuye de forma casi lineal. Al usar la escala logarítmica en el eje de la mortalidad se ve que este descenso es muy regular: incluso cuando la mortalidad se multiplica (pasa de valores muy bajos en edades jóvenes a valores muy altos en edades avanzadas), la esperanza de vida va cayendo de manera progresiva y predecible. Esto confirma la lógica demográfica básica: los grupos de edad con mayor riesgo de morir en el próximo intervalo son precisamente los que tienen menos años de vida esperados por delante. Unos pocos puntos se apartan ligeramente de la recta, pero no cambian el patrón principal de fuerte asociación negativa. (MODIFICAR)
@@ -844,8 +844,6 @@ riqueza_tidy <- riqueza_tidy %>%
   )
 
 names(riqueza_tidy)[2]<-"Año"
-
-
 ```
 
 Como nos vamos a centrar en la actividad relacionada con la sanidad, nos quedamos con las observaciones realcionadas con eso.
