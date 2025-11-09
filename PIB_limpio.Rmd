@@ -1,0 +1,367 @@
+---
+title: "PIB sin faltas"
+author: "Adrián Carrasco Alcalá"
+date: "2025-11-09"
+output: html_document
+---
+
+```{r}
+library(pacman)
+packages <- c("tidyverse", "knitr", "ggplot2", "dplyr", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr", "writexl", "xlsx", "kable", "future", "furrr", "mice", "kableExtra", "readxl")
+pacman::p_load(char=packages)
+```
+
+#PIB Importación y acondicionamiento de los datos
+
+A continuación, se muestra el dataset que utilizaremos para realizar el analisis del Calidad de Vida en España:
+
+```{r , message=FALSE, warning=FALSE}
+
+riqueza  <- read.csv("../data/RiquezaPIB.csv", header=TRUE, sep=";")
+```
+
+Características del dataset sin realizar modificaciones previas ni definir tipo de datos. Ahora, analizamos la estructura que tiene nuestra información.
+
+```{r tabPIB1, echo=FALSE}
+  
+ 
+  info_variable_pib <- sapply(riqueza, class) %>%
+      tibble::enframe(name = "Variable", value = "Tipo de Dato")
+    
+    knitr::kable(
+      info_variable_pib,
+      format = "latex",
+      booktabs = TRUE,
+      caption = "Estructura de Dataset PIB en bruto",
+      align = 'll',
+      position = "H"
+)
+```
+
+Para convertir nuestro dataset a formato tidy, tenemos que realizar las siguientes acciones.
+
+* Eliminar variables que no aporten información. En este caso, la variable ``Total.CNAE`` se usa para obtener los totales.
+
+```{r echo=FALSE}
+riqueza_var<-riqueza%>%select(-Total.CNAE)
+```
+
+* Separar variables que no son independientes. Las variables ``CNAE.Agrupación.A10``, ``CNAE.Agrupación.A21`` y ``CNAE.Agrupación.A64`` son de tipo categórico. Lo sabemos porque CNAE son las siglas de Clasificación Nacional de Actividades Económicas. Para esto separamos los valores en dos columnas siguiendo el patrón "cod_A.10" forma de "Cod_10","Nombre_10".
+
+```{r echo=FALSE}
+# Variable CNAE.Agrupación.A10, podemos ver que esta columna se podría separar 
+# 
+# Cod_A10: Teniendo en cuenta que que los primeros dígitos antes del primer espacio sería el código
+# Nombre_A10: Sería todo el restante
+riqueza_var$CNAE.Agrupación.A10[300]
+riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A10,c("Cod_10","Nombre_10"))
+riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A21,c("Cod_21","Nombre_21"))
+riqueza_var<-riqueza_var%>%separarCodigoCNAE(CNAE.Agrupación.A64,c("Cod_64","Nombre_64"))
+```
+
+* Cambiar valores decimales, cambiando "," por "."
+
+```{r,  echo=FALSE}
+  #Variable Total -> Numérico
+  riqueza_var<-riqueza_var%>%mutate(Total=as.numeric(gsub("\\.", "", Total)))%>%
+  mutate(Agregados=factor(Agregados.macroeconómicos))%>% #Cambiamos a factor
+  select(-Agregados.macroeconómicos) #Eliminamos la columna
+```
+
+* Cambiar de tipo de variable "Total" de ``character`` a ``double``
+
+```{r echo=FALSE}
+  df_limpio_riqueza<-riqueza_var%>%mutate(Total=as.double(Total))
+```
+
+Después de realizar todos estos cambios, obtenemos un dataframe en modo tidyverse, tal y como se muestra en la tabla:
+
+```{r tabPIB2, echo=FALSE}
+  
+ 
+  info_variable_pib <- sapply(df_limpio_riqueza, class) %>%
+      tibble::enframe(name = "Variable", value = "Tipo de Dato")
+    
+    knitr::kable(
+      info_variable_pib,
+      format = "latex",
+      booktabs = TRUE,
+      caption = "Estructura de Dataset PIB en formato TidyVerse",
+      align = 'll',
+      position = "H"
+)
+```
+
+ 
+## Detección de datos faltantes e imputación
+
+Para realizar la imputación es necesario determinar el numero de valores de tipo ``NA``.
+
+```{r echo = FALSE}
+conteo_na <- colSums(is.na(df_limpio_riqueza))
+```
+
+Debido a que la tabla es una clasificación de agregados para España, en las distintas variables. Observamos que en las variables ``Nombre_21``, ``Nombre_10``, ``Nombre_64`` hay valores nulos porque se utilizan para obtener los valores totales. En nuestro dataset la variables que tiene valores de interés son los que se encuentran en la variable ``Nombre_64``.
+
+Por ello eliminaremos los registros con valores ``NA`` pero solo en las variables ``Nombre_21`` y ``Nombre_10``, ya que estos datos tiene la particularidad de que para el año 2024, no existen valores para la variable ``Nombre_64``. 
+
+```{r echo = FALSE}
+df_limpio_riqueza<-df_limpio_riqueza%>%
+  filter(!is.na(Nombre_21)&!is.na(Nombre_10))%>%
+  select(Agregados,Cod_10,Nombre_10,Cod_21,Nombre_21,Cod_64,Nombre_64,Periodo,Total)
+DATOS_PIB_TIDY<-df_limpio_riqueza
+write.csv(DATOS_PIB_TIDY, "./porcentajes.csv", row.names = FALSE)
+```
+
+```{r tabPIB4, echo=FALSE}
+  
+ conteo_na <- colSums(is.na(df_limpio_riqueza))
+  info_variable_pib <- sapply(conteo_na, class) %>%
+      tibble::enframe(name = "Variable", value = "Tipo de Dato")
+    
+    knitr::kable(
+      conteo_na,
+      format = "latex",
+      booktabs = TRUE,
+      caption = "Valores NA para cada uno de las variables",
+      align = 'll',
+      position = "H"
+)
+```
+
+
+Una vez eliminados estos valores, vemos que el número de ``NA`` se ha reducido, pero nos siguen apareciendo en dos variables, ``Nombre_64`` y ``Total``.
+    Nombre_64-> tiene `r colSums(is.na(df_limpio_riqueza))["Nombre_64"]`, debido a que para el año 2024, no hay valores para esta variable pero sí para la categoría superior ``Nombre_21``.
+    
+Como para el análisis del indice de bienestar en España nos centraremos en la categoría de Servicios de la Salud, estos valores se encuentran en la categoría ``Nombre_64``. Pero para el año 2024, solo tenemos valores para la categoría superior ``Nombre_21``.
+
+Si vemos estos valores en con respecto a la variable ``Nombre_64``, podemos ver que representa un `r colMeans(is.na(df_limpio_riqueza["Nombre_64"])) * 100`%.
+
+Empezaremos analizando la variable ``Nombre_64`` y su categoría superior ``Nombre_21``. Así, podremos determinar si en todos los años de esta categoría ha cambiado.
+
+Como se observa en la siguiente tabla, ``Actividades sanitarias`` está dentro la categoría ``Actividades sanitarias y de servicios sociales``. Esto nos podría ayudar a realizar una estimación de porcentaje de reparto entre sus subcategorías. 
+
+```{r echo = FALSE}
+categorias<-df_limpio_riqueza%>%
+  select(
+    Cod_10,Nombre_10,Cod_21,Nombre_21,Cod_64,Nombre_64
+  )%>%
+  filter(Cod_10=="OPQ")%>%
+  drop_na()%>%
+  unique()
+```
+
+Para ello empezamos calculando sus porcentajes para cada año según su ``Agregado`` y solo para las ``Actividades sanitarias y de servicios sociales``.
+
+```{r echo = FALSE}
+
+porcentajes<-df_limpio_riqueza%>%filter(Nombre_21=="Actividades sanitarias y de servicios sociales")%>%group_by(Agregados,Periodo)%>%mutate(Porcentaje = (Total / sum(Total)) * 100)
+```
+
+
+```{r echo = FALSE}
+
+df_historical <- df_limpio_riqueza %>%
+  filter(Periodo < 2024 & !is.na(Nombre_64))
+
+# Definir las columnas de agrupación para el nivel agregado
+aggregate_group_cols <- c("Agregados", "Cod_10", "Nombre_10", "Cod_21", "Nombre_21", "Periodo")
+
+# Cálculo del Total Agregado Histórico por grupo y Periodo
+df_historical_aggregate <- df_historical %>%
+  group_by(across(all_of(aggregate_group_cols))) %>%
+  summarise(Total_Agregado_Historical = sum(Total, na.rm = TRUE), .groups = 'drop')
+
+
+df_historical_with_aggregate <- df_historical %>%
+  left_join(df_historical_aggregate, by = aggregate_group_cols) %>%
+  mutate(
+  #tener en cuenta las divisiones entre cero
+    Porcentaje_Calculado = case_when(
+      Total_Agregado_Historical != 0 ~ (Total / Total_Agregado_Historical) * 100,
+      TRUE ~ 0 
+    )
+  )
+
+# Imputación por porcentaje histórico promedio
+subcategory_group_cols <- c("Agregados", "Cod_10", "Nombre_10", "Cod_21", "Nombre_21", "Cod_64", "Nombre_64")
+df_avg_proportions <- df_historical_with_aggregate %>%
+  group_by(across(all_of(subcategory_group_cols))) %>%
+  summarise(
+    Porcentaje_Historico_Promedio = mean(Porcentaje_Calculado, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+#Imputación para el 2024
+df_2024_total <- df_limpio_riqueza %>%
+  filter(Periodo == 2024 & is.na(Nombre_64)) %>%
+  select(Agregados, Cod_10, Nombre_10, Cod_21, Nombre_21, Total_Agregado_2024 = Total)
+
+df_imputacion <- df_avg_proportions %>%
+  inner_join(df_2024_total, by = c("Agregados", "Cod_10", "Nombre_10", "Cod_21", "Nombre_21"))
+
+
+df_final_imputado <- df_imputacion %>%
+  mutate(
+    Total_Imputado_2024 = round(Total_Agregado_2024 * (Porcentaje_Historico_Promedio / 100), 2),
+    Periodo = 2024
+  ) %>%
+  select(
+    Agregados, Cod_10, Nombre_10, Cod_21, Nombre_21, Cod_64, Nombre_64,
+    Total_Agregado_2024, Porcentaje_Historico_Promedio, Total_Imputado_2024, Periodo
+  )
+```
+
+
+Obtenemos un dataframe con los datos imputados, para representarlo.
+
+```{r echo = FALSE}
+df_imputado_reemplazo <- df_final_imputado %>%
+  # Seleccionar solo las columnas clave y el valor a introducir
+  select(Agregados, Cod_10, Nombre_10, Cod_21, Nombre_21, Cod_64, Nombre_64, Periodo, Total_Imputado_2024) %>%
+  # Asegurar el tipo de dato del Periodo si es necesario
+  mutate(Periodo = as.integer(Periodo))
+
+df_fusionado <- df_limpio_riqueza %>%
+  left_join(df_imputado_reemplazo, 
+            by = c("Agregados", "Cod_10", "Nombre_10", "Cod_21", "Nombre_21", "Cod_64", "Nombre_64", "Periodo"))
+
+df_final_actualizado <- df_fusionado %>%
+  mutate(
+    Total = coalesce(Total, Total_Imputado_2024)
+  ) %>%
+  select(-Total_Imputado_2024)
+```
+
+
+
+## Gráficos exploratorios
+
+La siguiente gráfica, muestra el valor de ``Actividades Sanitarias`` en cada uno de los ``Agregados``. A destacar que, a continuación, se muestran los datos antes de la imputación y despues de la imputación.
+
+```{r fig_actividades_sanitarias, echo=FALSE, fig.width = 10, fig.height = 6, fig.align='center', out.width='0.9\\textwidth', fig.cap = "Evolución del Total de Actividades Sanitarias por Periodo, desglosado por Agregados Macroeconómicos. Datos en millones (M).\\label{fig:pib_sanidad}"}
+
+
+library(scales) 
+
+df_limpio_riqueza %>%
+  filter(Nombre_64 == 'Actividades sanitarias') %>%
+  ggplot(aes(x = as.factor(Periodo), y = Total, fill = Agregados)) +
+  geom_col(position = "stack") + 
+  labs(
+    title = "Total por Año, desglosado por Agregado",
+    x = "Año",
+    y = "Total (en millones de euros)",
+    fill = "Tipo de Agregado"
+  ) +
+  theme_minimal(base_size = 14) +
+  coord_flip() +
+  scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M")) +
+  theme(legend.position = "bottom") 
+
+
+{r fig_actividades_sanitarias_imputados, echo=FALSE, fig.width = 10, fig.height = 6, fig.align='center', out.width='0.9\\textwidth', fig.cap = "Evolución del Total de Actividades Sanitarias por Periodo, desglosado por Agregados Macroeconómicos. Datos en millones (M).\\label{fig:pib_sanidad}"}
+
+
+library(scales) 
+
+df_final_actualizado %>%
+  filter(Nombre_64 == 'Actividades sanitarias') %>%
+  ggplot(aes(x = as.factor(Periodo), y = Total, fill = Agregados)) +
+  geom_col(position = "stack") + 
+  labs(
+    title = "Total por Año, desglosado por Agregado(DATOS IMPUTADOS)",
+    x = "Año",
+    y = "Total (en millones de euros)",
+    fill = "Tipo de Agregado"
+  ) +
+  theme_minimal(base_size = 14) +
+  coord_flip() +
+  scale_y_continuous(labels = label_number(scale = 1e-6, suffix = " M")) +
+  theme(legend.position = "bottom") 
+```
+
+
+La siguiente tabla nos muestra que los agregados de ``Producción`` son los que mayor crecimiento económico proporcionan. Es un crecimiento estable a excepción del año 2020 en el que se ve una notable caída, posiblemente debido al COVID. 
+
+```{r fig_dispersion_total, echo=FALSE, fig.width = 10, fig.height = 5, fig.align='center', out.width='0.9\\textwidth', fig.cap = "Dispersión y tendencia del valor Total por Periodo, segregado por Agregados Macroeconómicos.\\label{fig:pib_dispersion}"}
+
+library(ggplot2)
+library(scales)
+
+
+ggplot(df_final_actualizado, aes(x = Periodo, y = Total, color = Agregados)) +
+  geom_point(alpha = 0.8, size = 2.5) +  
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", linewidth = 0.5) + # 
+  labs(
+    title = "Dispersión del Valor Total por Año (PIB)",
+    subtitle = "Coloreado por tipo de Agregado",
+    x = "Año",
+    y = "Total (Euros)"
+  ) +
+  scale_y_continuous(labels = comma) + 
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom") 
+```
+
+Para todos los agregados, la media es consistentemente mayor que la mediana. Esto es una señal clara de asimetría positiva (sesgo a la derecha), lo que significa que la mayoría de los valores son relativamente bajos, pero hay un pequeño número de valores extremadamente altos (los outliers).
+
+```{r fig_jitter_agregados, echo=FALSE, fig.width = 10, fig.height = 6, fig.align='center', out.width='0.9\\textwidth', fig.cap = "Distribución de los valores Totales (PIB) por Tipo de Agregado Macroeconómico, mostrando la densidad de puntos y los posibles valores atípicos.\\label{fig:pib_jitter}"}
+
+library(scales)
+library(ggplot2)
+
+ggplot(df_final_actualizado%>%
+  filter(Nombre_64 == "Actividades sanitarias"), aes(x = Agregados, y = Total, color = Agregados)) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 3) + 
+  labs(
+    title = "Distribución del Total por Tipo de Agregado",
+    x = "Tipo de Agregado",
+    y = "Total (Euros)"
+  ) +
+  scale_y_continuous(labels = comma) + 
+  coord_flip() + 
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none") 
+```
+
+## Detección outliers
+
+Para detectar los outliers, nos vamos a centrar en las ``Actividades Sanitarias``, pues para nuestro estudio lo que nos interesa es esta categoría. Calculando sus valores intercuartílicos (IQR), determinaremos los valores que se considerarían outliers (regla del boxplot).
+
+```{r echo = FALSE}
+
+df_sanitarias <- df_final_actualizado %>%
+  filter(Nombre_64 == "Actividades sanitarias")
+
+
+Q1 <- quantile(df_sanitarias$Total, 0.25)
+Q3 <- quantile(df_sanitarias$Total, 0.75)
+IQR <- Q3 - Q1
+
+#los límites para los outliers (Regla 1.5 * IQR)
+limit_inf <- Q1 - 1.5 * IQR
+limit_sup <- Q3 + 1.5 * IQR
+
+# identificar los outliers
+outliers <- df_sanitarias %>%
+  filter(Total < limit_inf | Total > limit_sup) %>%
+  # Seleccionar y renombrar las columnas relevantes para la visualización
+  select(
+    Agregados,
+    Clasificacion_Sectorial = Nombre_10,
+    Periodo,
+    Total
+  ) %>%
+  # Ordenar por el valor Total para ver los más extremos primero
+  arrange(desc(Total))
+
+# Resultados
+cat("--- Límites del IQR para 'Actividades Sanitarias' ---\n")
+cat(sprintf("Límite Inferior (Q1 - 1.5*IQR): %s Euros\n", format(limit_inf, big.mark = ",", decimal.mark = ".", scientific = FALSE, digits = 2)))
+cat(sprintf("Límite Superior (Q3 + 1.5*IQR): %s Euros\n", format(limit_sup, big.mark = ",", decimal.mark = ".", scientific = FALSE, digits = 2)))
+cat(sprintf("Total de observaciones para 'Actividades sanitarias': %d\n", nrow(df_sanitarias)))
+cat(sprintf("Número de Outliers detectados: %d\n\n", nrow(outliers)))
+```
+
+Vemos que los outliers que hemos encontrados son los que están en el agregado de ``Producción`` y coresponde con el periodo del 2022-2024. Posiblemente a consecuencia del COVID se hizo una inversión mayor en sanidad.
