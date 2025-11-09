@@ -38,18 +38,9 @@ type: article
 status: submit
 # front matter
 simplesummary: |
-  Análisis de la tasa de mortalidad en España por comunidades autónomas y su relación con la esperanza de vida, la inversión en sanidad y la renta media por unidad de consumo.
+
 abstract: |
-  A single paragraph of about 200 words maximum. For research articles, 
-  abstracts should give a pertinent overview of the work. We strongly encourage
-  authors to use the following style of structured abstracts, but without 
-  headings: 1) Background: Place the question addressed in a broad context and
-  highlight the purpose of the study; 2) Methods: Describe briefly the main
-  methods or treatments applied; 3) Results: Summarize the article's main 
-  findings; and 4) Conclusion: Indicate the main conclusions or interpretations. 
-  The abstract should be an objective representation of the article, it must not 
-  contain results which are not presented and substantiated in the main text and 
-  should not exaggerate the main conclusions.
+  
 keywords: |
   Tasa de mortalidad; Esperanza de vida; keyword 3.
 # back matter
@@ -59,28 +50,34 @@ dataavailability: |
   Todos los conjuntos de datos han sido obtenidos de la página del Instituto Nacional de Estadística (INE) (\url{https://www.ine.es/}). Son los siguientes:
   
   [Indicadores de renta media y mediana](https://www.ine.es/jaxiT3/Tabla.htm?t=53689)
-  
+
   [Renta media y mediana por comunidad autónoma](https://www.ine.es/jaxiT3/Tabla.htm?t=68338)
+  
+  [Mortalidad por año, comunidades y ciudades autónomas, sexo y edad.](https://www.ine.es/jaxiT3/Tabla.htm?t=27154)
+  
 conflictsofinterest: |
   The authors declare no conflict of interest. The founding sponsors had no role in the design of the study; 
   in the collection, analyses, or interpretation of data; in the writing of the 
   manuscript, an in the decision to publish the results
 abbreviations:
-  - short: MDPI
-    long: Multidisciplinary Digital Publishing Institute
-  - short: DOAJ
-    long: Directory of open access journals
-  - short: TLA
-    long: Three letter acronym
-  - short: LD 
-    long: linear dichroism
+  - short: INE
+    long: Instituto Nacional de Estadística
+  - short: MNAR
+    long: Missing Not At Random
 bibliography: mybibfile.bib
-appendix: appendix.tex
+#appendix: appendix.tex
 endnotes: false
+header-includes:
+  - \makeatletter
+  - \@ifundefined{pandoc@box}{\newbox\pandoc@box}{}
+  - \makeatother
+  - \providecommand{\pandocbounded}[1]{#1}
 output: 
   rticles::mdpi_article:
     extra_dependencies: longtable
+    fig_crop: false
 ---
+
 
 ```{r setup, cache = F, echo = F, message = F, warning = F, tidy = F}
 # CONFIGURACIÓN GENERAL
@@ -89,7 +86,7 @@ options(width = 76)
 # Opciones generales chunks
 opts_chunk$set(echo = T, message = F, error = F, warning = F,
                comment = NA, tidy = F,
-               cache.path = '.cache/', fig.path = './figure/')
+               cache.path = '.cache/', fig.path = './figure/', fig.crop = FALSE, fig.align = "center", fig.pos = "H")
 # options(xtable.type = 'html')
 knit_hooks$set(inline = function(x) {
   if(is.numeric(x)) {
@@ -103,50 +100,15 @@ knit_hooks$set(inline = function(x) {
 
 ```{r librerías, cache = F, echo = F, message = F, warning = F, tidy = F}
 library(pacman)
-packages <- c("tidyverse", "knitr", "ggplot2", "dplyr", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr", "writexl", "xlsx")
+packages <- c("tidyverse", "knitr", "ggplot2", "dplyr", "datasets", "RColorBrewer", "latex2exp", "readr", "lubridate", "magrittr", "writexl", "xlsx","kable","future","furrr","mice", "kableExtra","readxl")
 pacman::p_load(char=packages)
 ```
 
 
 # Introducción y planteamiento inicial
 
-The introduction should briefly place the study in a broad context and highlight
-why it is important. It should define the purpose of the work and its
-significance. The current state of the research field should be reviewed
-carefully and key publications cited. Please highlight controversial and
-diverging hypotheses when necessary. Finally, briefly mention the main aim of
-the work and highlight the principal conclusions. As far as possible, please
-keep the introduction comprehensible to scientists outside your particular
-field of research. Citing a journal paper [@bertrand-krajewski_distribution_1998;
-@leutnant_stormwater_2016]. And now citing a book reference @gujer_systems_2008.
-Some MDPI journals use Chicago and others use APA, this template should choose
-the correct citation format for you once you specify the journal in the YAML
-header.
-
-To use endnotes, change `endnotes: true` in the YAML header, then use
-`\endnote{This is an endnote.}`.
-
 
 # Materiales y Métodos
-
-Materials and Methods should be described with sufficient details to allow 
-others to replicate and build on published results. Please note that publication 
-of your manuscript implicates that you must make all materials, data, computer 
-code, and protocols associated with the publication available to readers. Please
-disclose at the submission stage any restrictions on the availability of 
-materials or information. New methods and protocols should be described in 
-detail while well-established methods can be briefly described and appropriately
-cited.
-
-Research manuscripts reporting large datasets that are deposited in a publicly 
-available database should specify where the data have been deposited and provide
-the relevant accession numbers. If the accession numbers have not yet been
-obtained at the time of submission, please state that they will be provided
-during review. They must be provided prior to publication.
-
-Interventionary studies involving animals or humans, and other studies require
-ethical approval must list the authority that provided approval and the
-corresponding ethical approval code.
 
 # Resultados
 
@@ -169,9 +131,17 @@ glimpse(df_renta_CCAA)
 Veamos los valores únicos de cada variable.
 
 ```{r, echo = FALSE}
-unique(df_renta_CCAA['Renta media y mediana']) %>% kable(caption = "Renta media y mediana")
-unique(df_renta_CCAA['Comunidad autónoma']) %>% kable(caption = "Comunidad autónoma")
-unique(df_renta_CCAA['Periodo']) %>% kable(caption = "Periodo")
+tabla_variables <- tribble(
+  ~Variable,               ~Descripción,
+  "Renta media y mediana", "Indica si el dato es la renta media o la renta mediana por unidad de consumo.",
+  "Comunidad autónoma",    "Ámbito territorial del dato (Total Nacional y cada CCAA).",
+  "Periodo",               "Año de referencia del dato (2008–2024)."
+)
+
+kable(
+  tabla_variables,
+  caption = "Descripción de las variables del conjunto de datos",
+)
 ```
 
 Observamos que la columna ``Renta media y mediana`` tan solo tomas dos valores, pero la hemos importado como vector de caracteres. Deberíamos transformarla a factor.
@@ -207,7 +177,7 @@ Utilizando la función ``is.na()`` comprobamos que no tenemos datos faltantes en
 
 Realicemos un gráfico exploratorio de los datos con los que estamos trabajando. Lo haremos para el total nacional.
 
-```{r fig_renta, echo = FALSE, fig.width = 8, fig.height = 5, fig.cap = "Renta media y mediana para el Total Nacional en el periodo 2008-2024.\\label{fig:fig_renta}"}
+```{r fig_renta, echo = FALSE, fig.width = 8, fig.height = 5,fig.align='center',out.width='0.8\\textwidth', fig.cap = "Renta media y mediana para el Total Nacional en el periodo 2008-2024.\\label{fig:fig_renta}"}
 df_renta_CCAA %>% filter(`Comunidad autónoma` == "Total Nacional") %>% ggplot(aes(x = Periodo, y = Total, color = `Renta media y mediana`)) + geom_point() + geom_line()
 ```
 
@@ -236,136 +206,476 @@ df_renta_CCAA %>% filter(`Comunidad autónoma` == "Total Nacional") %>% ggplot(a
 
 ---
 
-This section may be divided by subheadings. It should provide a concise and
-precise description of the experimental results, their interpretation as well
-as the experimental conclusions that can be drawn.
+# Dataset de mortalidad.
 
-## Subsection Heading Here
+En este conjunto de datos del Instituto Nacional de Estadística (INE) se recogen varias series o funciones biométricas por rango de edad, sexo y Comunidad Autónoma —como el riesgo de fallecer, el número de supervivientes o la esperanza de vida— que se elaboran con la finalidad principal de medir cómo incide la mortalidad en una población sin que afecte la distribución por edades que tenga. De este modo, es posible comparar y estudiar en el tiempo y entre distintos lugares la evolución de este fenómeno demográfico.
 
-Subsection text here.
 
-### Subsubsection Heading Here
+## Estructura y variables.
 
-Bulleted lists look like this:
+El dataset cuenta con estas variables:
 
-* First bullet
-* Second bullet
-* Third bullet
+```{r, echo = FALSE}
+tabla_mortalidad <- tribble(
+  ~Variable,               ~Descripción,
+  "Comunidad",             "Comunidad autónoma a la que pertenece el registro.",
+  "Sexo",                  "Sexo de la población (Hombres/Mujeres).",
+  "Rango_Edad",            "Grupo o intervalo de edad al que se refiere la medida (0 años, 1–4 años, …).",
+  "Año",                   "Año de referencia de la tabla de mortalidad.",
+  "Tasa_mortalidad",       "Tasa de mortalidad observada para ese sexo, edad y comunidad.",
+  "Promedio_anos_vividos", "Número medio de años vividos dentro del intervalo de edad por quienes mueren en él.",
+  "Riesgo_muerte",         "Probabilidad de morir dentro del intervalo de edad (qx en una tabla de vida).",
+  "Supervivientes",        "Número de personas que alcanzan ese intervalo de edad en la población hipotética (lx).",
+  "Defunciones_teoricas",  "Número de defunciones esperadas en ese intervalo de edad (dx).",
+  "Poblacion_estacionaria","Población estacionaria asociada al intervalo de edad (Lx).",
+  "Esperanza_de_vida",     "Esperanza de vida restante al inicio del intervalo de edad (ex)."
+)
 
-Numbered lists can be added as follows:
+kable(
+  tabla_mortalidad,
+  format = "latex",
+  caption = "Descripción de las variables del conjunto de datos",
+  booktabs = TRUE
+) |>
+  kable_styling(latex_options = "hold_position") |>
+  column_spec(1, width = "4cm") |>
+  column_spec(2, width = "9cm")
+```
 
-1. First item
-2. Second item
-3. Third item
+Las variables en las que nos vamos a centrar son la tasa de mortalidad y la esperanza de vida
 
-The text continues here.
+## Importación y acondicionamiento de los datos.
 
-## Figures, Tables and Schemes
+```{r, echo=FALSE}
 
-All figures and tables should be cited in the main text as Figure \ref{fig:fig1}, 
-\ref{tab:tab1}, etc. To get cross-reference to figure generated by R chunks 
-include the `\\label{}` tag in the `fig.cap` attribute of the R chunk: 
-`fig.cap = "Fancy Caption\\label{fig:plot}"`.
+#Función que recive el archivo xslx y crea un df en formato tidy
+# to_tidy<- function(file){
+#     
+#   df <- read_excel(file)
+#   df <- df[-c(1:6,4244:4260),] #Eliminar filas innecesarias (titulo, anotaciones, etc.)
+#   
+#   df <- df %>% 
+#   mutate(across(
+#   everything(),
+#   ~ {
+#     x <- as.character(.)
+#     ifelse(grepl("^(90|95) ", x),           
+#            paste0("De ", x), 
+#            x)
+#   }
+#   ))
+#   
+#   Columna_1 <- df[[1]]
+#   
+#   comunidad_idx <- grep("^[0-9]{2} ", Columna_1)
+#   sexo_idx <- grep("^(Hombres|Mujeres)$", Columna_1, ignore.case = TRUE)
+#   
+#   res <- list()
+#   
+#   for (s in seq_along(sexo_idx)) {
+# 
+#     sexo_start <- sexo_idx[s]
+#     sexo_end   <- if (s < length(sexo_idx)) sexo_idx[s + 1] - 1 else length(Columna_1)
+#   
+#     seleccion <- Columna_1[sexo_start:sexo_end]
+#     
+#     sexo  <- seleccion[1]
+#   
+#     comunidad_glob <- tail(Columna_1[grep("^[0-9]{2} ", Columna_1[1:sexo_start])], 1)
+#     comunidad <- str_remove(comunidad_glob, "^[0-9]{2} ")
+#   
+#     edades_rel <- grep("años", seleccion)
+#   
+#     for (i in edades_rel) {
+#   
+#       edad_label      <- seleccion[i]
+#       edad_idx_global <- sexo_start + i - 1
+#       
+#       year_idx <- edad_idx_global + 1:4
+#       anios <- Columna_1[year_idx]
+#   
+#       # Extraer las métricas numéricas de esas mismas filas (columnas 2:n)
+#       medidas <- df[year_idx, 2:ncol(df)]
+#   
+#       tmp <- suppressMessages(data.frame(
+#         Comunidad = comunidad,
+#         Sexo      = sexo,
+#         Edad      = edad_label,
+#         Año       = anios
+#       ) %>%
+#         bind_cols(medidas))
+#   
+#       res[[length(res) + 1]] <- tmp
+#     }
+#   }
+#   
+#   df_tidy <- bind_rows(res)
+#   
+#   return(df_tidy)
+#   
+# }
+# 
+# availableCores() 
+# 
+# plan(multisession, workers = availableCores() - 2) #Paralelizamos el proceso para optimizar el tiempo
+# 
+# files <- list.files("data_mortalidad", pattern = "\\.xlsx$", full.names = TRUE)
+# 
+# files <- list.files(path = "data_mortalidad", pattern = "\\.xlsx$", full.names = TRUE)
+# 
+# tidy_data_list<-future_map(files, to_tidy, .progress = TRUE)
+# 
+# Mortalidad_tidy<-data.frame()
+# 
+# for (i in tidy_data_list){
+# 
+#   Mortalidad_tidy<-rbind(Mortalidad_tidy, i)
+# 
+# }
+# 
+# # La columna 11 que corresponde a tiempo por vivir es irrelevante ya que da la misma información que la esperanza de vida 
+# Mortalidad_tidy<-Mortalidad_tidy[,-c(11)]
+# 
+# names(Mortalidad_tidy) <- c(
+#   "Comunidad", "Sexo", "Rango_Edad", "Año",
+#   "Tasa_mortalidad", "Promedio_anos_vividos", "Riesgo_muerte",
+#   "Supervivientes", "Defunciones_teoricas", "Poblacion_estacionaria",
+#   "Esperanza_de_vida"
+# )
+```
 
-```{r fig1, echo=FALSE, fig.width=3, fig.cap="A figure added with a code chunk.\\label{fig:fig1}"}
-x = rnorm(10)
-y = rnorm(10)
-plot(x, y)
+Tras descargar el archivo .xlsx realizamos varias operaciones para ordenarlo, en las que se incluyen: quitar filas y columnas inútiles, cambiar el nombre de las columnas y pasar el data frame a formato tidy. Una vez tenemos el dataframe, analizamos la estructura de este (\textit{str()}), y nos damos cuenta que todas las variables son de tipo char, por lo que las modificamos para que la variable Año sea de tipo \textit{Date}, Rango_Edad sea de tipo \textit{factor}, y las variables numéricas de tipo \textit{numeric}.
+
+```{r,echo=F}
+#write.xlsx(Mortalidad_tidy, "data/Mortalidad_tidy.xlsx")
+```
+```{r,echo=F}
+Mortalidad_tidy<-read_excel("data/Mortalidad_tidy.xlsx")
+
+Mortalidad_tidy$Rango_Edad[is.na(Mortalidad_tidy$Rango_Edad)] <- "De 90 y más años"
 ```
 
 
-When making tables using `kable`, it is suggested to use
-the `format="latex"` and `tabl.envir="table"` arguments
-to ensure table numbering and compatibility with the mdpi
-document class.
+```{r,echo=F}
 
-```{r tab1, echo=FALSE}
-knitr::kable(mtcars[1:5, 1:3], format = "latex", 
-             booktabs = TRUE, 
-             caption = "This is a table caption. Tables should be placed in the 
-             main text near to the first time they are~cited.", 
-             align = 'ccc', centering = FALSE,
-             table.envir = "table", position = "H")
+niveles <- c(
+  "0 años",
+  "De 1 a 4 años",
+  "De 5 a 9 años",
+  "De 10 a 14 años",
+  "De 15 a 19 años",
+  "De 20 a 24 años",
+  "De 25 a 29 años",
+  "De 30 a 34 años",
+  "De 35 a 39 años",
+  "De 40 a 44 años",
+  "De 45 a 49 años",
+  "De 50 a 54 años",
+  "De 55 a 59 años",
+  "De 60 a 64 años",
+  "De 65 a 69 años",
+  "De 70 a 74 años",
+  "De 75 a 79 años",
+  "De 80 a 84 años",
+  "De 85 a 89 años",
+  "De 90 y más años",
+  "De 90 a 94 años",
+  "De 95 y más años"
+)
+
+
+Mortalidad_tidy <- Mortalidad_tidy %>%
+  mutate(
+    Comunidad = as.character(Comunidad),
+    Sexo = as.character(Sexo),
+    Rango_Edad = factor(Rango_Edad, levels = niveles),
+    Año = as.Date(paste0(Año, "-01-01")),
+    Tasa_mortalidad = as.numeric(Tasa_mortalidad),
+    Promedio_anos_vividos = as.numeric(Promedio_anos_vividos),
+    Riesgo_muerte = as.numeric(Riesgo_muerte),
+    Supervivientes = as.numeric(Supervivientes),
+    Defunciones_teoricas = as.numeric(Defunciones_teoricas),
+    Poblacion_estacionaria = as.numeric(Poblacion_estacionaria),
+    Esperanza_de_vida = as.numeric(Esperanza_de_vida)
+  )
+
+
+```
+
+```{r,echo=FALSE}
+glimpse(Mortalidad_tidy)
 ```
 
 
+## Imputación de datos.
 
-For a very wide table, landscape layouts are allowed.
+Para saber que realizar con los valores faltantes, primero vamos a realizar un análisis del data frame.
 
+Observamos que este data frame tiene un `r sum(is.na(Mortalidad_tidy)) / (nrow(Mortalidad_tidy) * ncol(Mortalidad_tidy))*100`% de valores faltantes, un valor muy bajo. Si vemos el porcentaje de los datos faltantes por columnas obtenemos el siguiente resultado:
 
-\startlandscape
+```{r, echo=F}
+colMeans(is.na(Mortalidad_tidy)) * 100
+```
+Se observa que los datos faltantes son de las variables numéricas, y además, faltan en la misma proporción, lo que nos puede indicar que no hay aleatoriedad.
 
-```{r tab2, echo=FALSE}
-df <- data.frame(`Title 1` = c("Entry 1", "Entry 2"),
-                 `Title 2` = c("Data", "Data"),
-                 `Title 3` = c("Data", "Data"),
-                 `Title 4` = c("This cell has some longer content that runs over
-                               two lines",
-                               "Data"))
-knitr::kable(df, format = "latex", 
-             booktabs = TRUE, 
-             caption = "This is a very wide table", 
-             align = 'ccc', centering = FALSE,
-             table.envir = "table", position = "H")
+A continuación vamos a realizar una observación de los datos faltantes respecto a las variables categóricas en busca de patrones. Al sacar los datos faltantes en función de las variables categóricas, se observa que estamos ante un claro caso de datos faltantes no al azar (MNAR). Las observaciones faltantes corresponden con personas que sobrepasan los 90 años, lo que indica que no hay datos reales para esos casos.En este caso se ha decidido no imputar estos datos, ya que no contamos con ninguna base empírica para estimar los valores de las variables de esas edades.
+
+Como la mayoría de los datos faltantes pertenecen al rango de edad de 90 y más años y al tener otros rangos de edad que comprenden también ese rango, hemos decidido eliminar esas observaciones.
+
+```{r, echo=F}
+na_por_edad <- Mortalidad_tidy %>%
+  group_by(Rango_Edad) %>%
+  summarise(
+    prop_NA = mean(is.na(Tasa_mortalidad)),
+    .groups = "drop"
+  ) %>%
+  mutate(porcentaje_NA = round(prop_NA * 100, 2)) %>%
+  arrange(desc(prop_NA))
+
+na_por_edad
 ```
 
-\finishlandscape
+```{r, echo=F}
+Mortalidad_tidy <- Mortalidad_tidy %>%
+  filter(Rango_Edad != "De 90 y más años")
+```
+Ahora el data frame cuenta con un `r sum(is.na(Mortalidad_tidy)) / (nrow(Mortalidad_tidy) * ncol(Mortalidad_tidy))*100`% de datos faltantes, un valor muy bajo
 
-## Formatting of Mathematical Components
+El resto de NAs al ser tan pocos, y centrados solo en tres Comunidades Autonomas, hemos decidido dejarlos y realizar los cálculos de los estadísticos obviándolos.
 
-This is an example of an equation:
+## Detección de outlayers
 
-$$
-a = 1.
-$$
+Para detectar outlayers vamos a aplicar los mismos 3 métodos que en los dataframes anteriores:
 
-If you want numbered equations use Latex and wrap in the equation environment:
 
-\begin{equation}
-a = 1,
-\end{equation}
 
-the text following an equation need not be a new paragraph. Please punctuate 
-equations as regular text.
+```{r, echo=F}
 
-```{comment}
-If the documentclass option "submit" is chosen, please insert a blank line before and after any math environment (equation and eqnarray environments). This ensures correct linenumbering. The blank line should be removed when the documentclass option is changed to "accept" because the text following an equation should not be a new paragraph.
+Mortalidad_tidy_Rango_Edad<-Mortalidad_tidy %>% 
+  select(
+    Rango_Edad,
+    Esperanza_de_vida,
+    Tasa_mortalidad
+  )
+
+x_esperanza_de_vida <- Mortalidad_tidy_Rango_Edad$Esperanza_de_vida
+x_tasa_mortalidad <- Mortalidad_tidy_Rango_Edad$Tasa_mortalidad
+
+#REGLA 3 SIGMA
+
+media_x_esperanza_de_vida <- mean(x_esperanza_de_vida,na.rm=TRUE)
+sd_x_esperanza_de_vida<- sd(x_esperanza_de_vida,na.rm=TRUE)
+
+media_x_tasa_mortalidad <- mean(x_tasa_mortalidad,na.rm=TRUE)
+sd_x_tasa_mortalidad<- sd(x_tasa_mortalidad,na.rm=TRUE)
+
+# umbrales
+lim_inf_esperanza_de_vida <- media_x_esperanza_de_vida - 3 * sd_x_esperanza_de_vida
+lim_sup_esperanza_de_vida <- media_x_esperanza_de_vida + 3 * sd_x_esperanza_de_vida
+
+lim_inf_x_tasa_mortalidad <- media_x_tasa_mortalidad - 3 * sd_x_tasa_mortalidad
+lim_sup_x_tasa_mortalidad <- media_x_tasa_mortalidad + 3 * sd_x_tasa_mortalidad
+
+# cuáles son outliers según 3 sigma
+out_sigma_esperanza_de_vida <- x_esperanza_de_vida < lim_inf_esperanza_de_vida | x_esperanza_de_vida > lim_sup_esperanza_de_vida
+out_sigma_tasa_mortalidad <- x_tasa_mortalidad < lim_inf_x_tasa_mortalidad | x_tasa_mortalidad > lim_sup_x_tasa_mortalidad
+
+n_out_sigma_ev<-sum(as.vector(out_sigma_esperanza_de_vida),na.rm = TRUE)
+n_out_sigma_tm<-sum(as.vector(out_sigma_tasa_mortalidad),na.rm = TRUE)
 ```
 
-This is the example 2 of equation:
+```{r, echo=F}
+# REGLA HAMPEL
 
-\begin{adjustwidth}{-\extralength}{0cm}
-\begin{equation}
-a = b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + 
-u + v + w + x + y + z
-\end{equation}
-\end{adjustwidth}
+mediana_x_esperanza_vida <- median(x_esperanza_de_vida)
+mad_x_esperanza_vida     <- mad(x_esperanza_de_vida)
 
-Theorem-type environments (including propositions, lemmas, corollaries etc.) 
-can be formatted as follows:
+lim_inf_h_esperanza_vida <- mediana_x_esperanza_vida - 3 * mad_x_esperanza_vida
+lim_sup_h_esperanza_vida <- mediana_x_esperanza_vida + 3 * mad_x_esperanza_vida
 
-Example of a theorem:
+out_hampel_esperanza_vida <- x_esperanza_de_vida < lim_inf_h_esperanza_vida | x_esperanza_de_vida > lim_sup_h_esperanza_vida
 
-::: {.Theorem latex=true}
-Example text of a theorem
-:::
+n_out_hampel_ev<-sum(as.vector(out_hampel_esperanza_vida),na.rm=TRUE)
 
-The text continues here. Proofs must be formatted as follows:
+#Tasa mortalidad
 
-Example of a proof:
+mediana_x_tasa_mortalidad <- median(x_tasa_mortalidad)
+mad_x_tasa_mortalidad     <- mad(x_tasa_mortalidad)
 
-::: {.proof latex="[Proof of Theorem1]"}
-Text of the proof. Note that the phrase ``of Theorem 1'' is optional if it is 
-clear which theorem is being referred to.
-:::
+lim_inf_h_tasa_mortalidad <- mediana_x_tasa_mortalidad - 3 * mad_x_tasa_mortalidad
+lim_sup_h_tasa_mortalidad <- mediana_x_tasa_mortalidad + 3 * mad_x_tasa_mortalidad
 
-The text continues here.
+out_hampel_tasa_mortalidad <- x_tasa_mortalidad < lim_inf_h_tasa_mortalidad | x_tasa_mortalidad > lim_sup_h_tasa_mortalidad
+
+n_out_hampel_tm<-sum(as.vector(out_hampel_tasa_mortalidad),na.rm=TRUE)
+
+```
+
+```{r, echo=F}
+# REGLA BOXPLOT
+
+#Esperanza de vida
+
+Q1_ev  <- quantile(x_esperanza_de_vida, 0.25,na.rm = TRUE)
+Q3_ev  <- quantile(x_esperanza_de_vida, 0.75,na.rm = TRUE)
+IQR_ev <- Q3_ev - Q1_ev
+
+lim_inf_ev <- Q1_ev - 1.5 * IQR_ev
+lim_sup_ev <- Q3_ev + 1.5 * IQR_ev
+
+out_boxplot_ev <- x_esperanza_de_vida < lim_inf_ev | x_esperanza_de_vida > lim_sup_ev
+
+n_out_boxplot_ev<-sum(as.vector(out_boxplot_ev),na.rm=TRUE)
+
+#Tasa mortalidad
+
+Q1_tm  <- quantile(x_tasa_mortalidad, 0.25,na.rm = TRUE)
+Q3_tm  <- quantile(x_tasa_mortalidad, 0.75,na.rm = TRUE)
+IQR_tm <- Q3_tm - Q1_tm
+
+# 3) límites de la regla 1.5*IQR
+lim_inf_tm <- Q1_tm - 1.5 * IQR_tm
+lim_sup_tm <- Q3_tm + 1.5 * IQR_tm
+
+# 4) detectar outliers según la regla
+out_boxplot_tm <- x_tasa_mortalidad < lim_inf_tm | x_tasa_mortalidad > lim_sup_tm
+
+n_out_boxplot_tm<-sum(as.vector(out_boxplot_tm),na.rm=TRUE)
+```
+
+\begin{itemize}
+  \item \textbf{Regla 3 sigma:}
+  \begin{itemize}
+    \item Esperanza de vida: \(`r n_out_sigma_ev`\)
+    \item Tasa de mortalidad: \(`r n_out_sigma_tm`\)
+  \end{itemize}
+
+  \item \textbf{Identificador de Hampel:}
+  \begin{itemize}
+    \item Esperanza de vida: \(`r n_out_hampel_ev`\)
+    \item Tasa de mortalidad: \(`r n_out_hampel_tm`\)
+  \end{itemize}
+
+  \item \textbf{Regla boxplot:}
+  \begin{itemize}
+    \item Esperanza de vida: \(`r n_out_boxplot_ev`\)
+    \item Tasa de mortalidad: \(`r n_out_boxplot_tm`\)
+  \end{itemize}
+\end{itemize}
+
+Los valores tan elevados en la tasa de mortalidad con \textbf{Sigma 3} y \textbf{Boxplot} se debe a que lo máximo de la tasa de mortalidad está en De 95 y más años, donde llega a ~923 por mil, y en edades muy altas también sube mucho. Eso es exactamente lo que debe pasar: la mortalidad crece exponencialmente con la edad. No es un outlier, es la realidad de ese grupo.
+
+El valor 0 en la tasa de mortalidad con \textbf{Hampel} es 0 ya que usa la mediana y el MAD, que no se mueven casi aunque haya valores muy grandes, así que los extremos no arrastran el criterio como sí pasa con la media y la desviación típica.
+
+## Análisis univariante y bivariante
+
+Para responder algunas cuestiones que nos hemos planteado, vamos a realizar un análisis univariante y bivariante de las variables que nos interesan:
+
+### ¿Cuál es la esperanza de vida media en España en el último año disponible? ¿Qué Comunidad Autónoma es la que más tiene, y la que menos?
+
+Para este análisis de la esperanza de vida se ha escogido calcular la media para una edad de 0 años.
+
+La media de esperanza de vida en España del año 2023 (Último año disponible) es de `r round(mean(Mortalidad_tidy$Esperanza_de_vida[Mortalidad_tidy$Año == as.Date("2023-01-01") & Mortalidad_tidy$Rango_Edad == "0 años"],na.rm = TRUE),3)`.
+
+```{r,echo=F,fig.width = 8, fig.height = 5,fig.align='center',out.width='0.8\\textwidth', fig.cap = "Esperanza de vida media por C.A. en 2023 .\\label{fig:fig_renta}"}
+Mortalidad_tidy %>%
+  filter(
+    Año == as.Date("2023-01-01"),
+    Rango_Edad == "0 años"
+  ) %>%
+  group_by(Comunidad) %>%
+  summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
+  ggplot(aes(x = reorder(Comunidad, Media_vida), 
+             y = Media_vida, 
+             fill = Comunidad)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Esperanza de vida media (1–4 años) por Comunidad Autónoma — 2023",
+    subtitle = "Datos de Mortalidad_tidy",
+    x = "Comunidad Autónoma",
+    y = "Esperanza de vida (años)"
+  )
+```
+Podemos observar que la media de esperanza de vida más alta en españa pertenece a La Comunidad de Madrid mientras que la que menos esperanza de vida tiene es Ceuta con una diferencia de `r round(mean(Mortalidad_tidy$Esperanza_de_vida[Mortalidad_tidy$Año == as.Date("2023-01-01") & Mortalidad_tidy$Rango_Edad == "0 años" & Mortalidad_tidy$Comunidad == "Madrid, Comunidad de"], na.rm = TRUE) - mean(Mortalidad_tidy$Esperanza_de_vida[Mortalidad_tidy$Año == as.Date("2023-01-01") & Mortalidad_tidy$Rango_Edad == "0 años" & Mortalidad_tidy$Comunidad == "Ceuta"], na.rm = TRUE),3)` años.
+
+### ¿Cual es la evolución de la esperanza de vida en el tiempo?
+
+```{r, echo=F,fig.width = 8, fig.height = 5,fig.align='center',out.width='0.8\\textwidth', fig.cap = "Evolución de la esperanza de vida (1992-2023).\\label{fig:fig_renta}"}
+Evolucion_mortalidad_Por_CA<-Mortalidad_tidy %>%
+  filter(
+    Rango_Edad == "0 años"      # rango de edad al nacer
+  ) %>%
+  group_by(Año, Comunidad) %>%
+  summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
+  ggplot(aes(x = Año,
+             y = Media_vida,
+             color = Comunidad)) +
+  geom_line(linewidth = 1) +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Esperanza de vida por C.A.",
+    subtitle = "Rango de edad: 0 años",
+    x = "Año",
+    y = "Esperanza de vida (años)",
+    color = "Comunidad Autónoma"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40")
+  )
+
+Evolucion_mortalidad_Por_CA
+```
+Se puede apreciar una caída de la esperanza de vida en el año 2020, que coincide exactamente con la pandemia de COVID-19:
+
+```{r,echo=F,fig.width = 8, fig.height = 5,fig.align='center',out.width='0.8\\textwidth', fig.cap = "Evolución de la esperanza de vida (2019-2023).\\label{fig:fig_renta}"}
+Evolucion_mortalidad_Por_CA_Covid<-Mortalidad_tidy %>%
+  filter(
+    Rango_Edad == "0 años"    # Esperanza de vida al nacer
+  ) %>%
+  group_by(Año, Comunidad) %>%
+  summarise(Media_vida = mean(Esperanza_de_vida, na.rm = TRUE)) %>%
+  ggplot(aes(x = Año, y = Media_vida, color = Comunidad)) +
+  geom_line(linewidth = 1) +
+  coord_cartesian(xlim = as.Date(c("2019-01-01", "2021-12-31"))) + 
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Evolución esperanza de vida (2018–2022)",
+    subtitle = "Enfoque en el periodo de la pandemia de COVID-19",
+    x = "Año",
+    y = "Esperanza de vida (años)",
+    color = "Comunidad Autónoma"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40")
+  )
+
+Evolucion_mortalidad_Por_CA_Covid
+```
+
+```{r,echo=F}
+disminucion_media<- Mortalidad_tidy %>%
+  filter(
+    Rango_Edad=="0 años",
+  ) %>%
+group_by(Año,Comunidad)
+
+suma_media_esperanza_vida_2019<-mean(
+  disminucion_media[disminucion_media$Año == as.Date("2019-01-01"), "Esperanza_de_vida", drop = TRUE],
+  na.rm = TRUE
+)
+
+suma_media_esperanza_vida_2020<-mean(
+  disminucion_media[disminucion_media$Año == as.Date("2020-01-01"), "Esperanza_de_vida", drop = TRUE],
+  na.rm = TRUE
+)
+```
+
+Durante el COVID, la disminución media de la esperanza de vida fue de:`r round(suma_media_esperanza_vida_2019-suma_media_esperanza_vida_2020,3)`
 
 # Conclusiones finales
 
-Authors should discuss the results and how they can be interpreted in 
-perspective of previous studies and of the working hypotheses. The findings and 
-their implications should be discussed in the broadest context possible. Future 
-research directions may also be highlighted.
-
-Comentario recuperación tras el covid a pesar de la preocupación por las vacunas.
+Como conclusión...
